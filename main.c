@@ -4,9 +4,9 @@
 #include "stdlib.h"
 
 // Pencere boyutu ve gridin ayarlanmasý
-#define GRID_WIDTH 10
-#define GRID_HEIGHT 10
-#define CELL_SIZE 60
+#define GRID_WIDTH 8
+#define GRID_HEIGHT 8
+#define CELL_SIZE 100
 
 // Hamle hakký ve puan için üst bar yüksekliði
 #define UI_HEIGHT 40
@@ -24,85 +24,123 @@ Vector2 selected = { -1, -1 };
 typedef enum { BEFOREPLAY, PLAYING, AFTERPLAY } GameState;
 GameState gameState = BEFOREPLAY;
 
+// Animasyon durumu
+typedef enum { ANIMATING, IDLE } AnimationState;
+AnimationState animationState = IDLE;
+
+// Müzik durumu
+typedef enum { MUSIC_ON, MUSIC_OFF } MusicState;
+MusicState musicState = MUSIC_ON;
+
+// Ses durumu
+typedef enum { SOUND_ON, SOUND_OFF } SoundState;
+SoundState soundState = SOUND_ON;
+
 // Fonksiyonlar
 void mainMenu(void);
 void playMenu(void);
 void DropCandies(void);
 void InitGrid(void);
 
-int main(void)
+void main(void)
 {
-    // Rastgelelik için
     srand(time(NULL));
-    // Oyun penceresini baþlat
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Candy Crush Saga");
     SetTargetFPS(60);
-    while (gameState == BEFOREPLAY) {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        mainMenu();
-        // Butonlara týklama kontrolü
-        Vector2 mousePos = GetMousePosition();
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            if (CheckCollisionCircleRec(mousePos, 40, (Rectangle) { 210, 180, 80, 40 })) {
-                gameState = PLAYING;
-            }
-            else if (CheckCollisionCircleRec(mousePos, 40, (Rectangle) { 210, 280, 80, 40 })) {
-                gameState = PLAYING;
-            }
-        }
-        EndDrawing();
-    }
-    while (gameState == PLAYING) {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        playMenu();
-        EndDrawing();
-    }
-    CloseWindow();
-    return 0;
+    mainMenu();
 }
 
 void mainMenu(void)
 {
-    ClearBackground(GRAY);
+    InitWindow(600, 640, "Underwater Dream");
     // Ana menü butonlarýný oluþturmak için genel bir struct.
     typedef struct
     {
-        int posX;
-        int posY;
+        Vector2 position;
         float radius;
         Color color;
     } Circle;
 
     // Ana menü butonlarýnýn tanýmlanmasý
-    Circle startButton = { 250,200,60,BLACK };
-    Circle musicButton = { 400,450,20,WHITE };
-    Circle soundButton = { 450,450,20,WHITE };
-    Circle resetButton = { 50,450,30,DARKGRAY };
+    int start_x = 300;
+    int start_y = 275;
+    float start_radius = 60;
+    Circle startButton = { {300,275},start_radius,BLACK };
+    Circle musicButton = { {300,390},40,BLACK };
+    Circle soundButton = { {300,480},40,BLACK };
 
-    // Baþlýk
-    DrawText("Welcome to Candy Crush Saga!", 100, 100, 30, BLACK);
+	// Duvar kaðýdý yüklenmesi
+    Texture2D wallpaper = LoadTexture("assets/wallpaper.png");
 
-    // Butonlarýn çizilmesi ve Label eklenmesi
-    DrawCircle(startButton.posX, startButton.posY, startButton.radius, startButton.color);
-    DrawText("START", startButton.posX - 28, startButton.posY - 8, 18, WHITE);
-    DrawCircle(musicButton.posX, musicButton.posY, musicButton.radius, musicButton.color);
-    DrawCircle(soundButton.posX, soundButton.posY, soundButton.radius, soundButton.color);
-    DrawCircle(resetButton.posX, resetButton.posY, resetButton.radius, resetButton.color);
+    while (!WindowShouldClose())
+    {
+		BeginDrawing();
+		// Arka planýn çizilmesi
+        DrawTexture(wallpaper, 0, 0, WHITE);
+
+        // Butonlara týklama kontrolü
+        Vector2 mousePos = GetMousePosition();
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            if (CheckCollisionPointCircle(mousePos, (Vector2) { start_x, start_y }, start_radius))
+            {
+                gameState = PLAYING;
+				break;
+            }
+        }
+        // Baþlýk
+        DrawText("Underwater Dream", 100, 100, 42, DARKPURPLE);
+        DrawText("Similar to Candy Crush Saga. Coded with Raylib.", 50, 150, 21, BLACK);
+
+        // Butonlarýn çizilmesi
+        DrawCircleV(startButton.position, startButton.radius, startButton.color);
+        DrawCircleV(musicButton.position, musicButton.radius, musicButton.color);
+        DrawCircleV(soundButton.position, soundButton.radius, soundButton.color);
+
+        // Baþlýklarýn çizilmesi
+        DrawText("START", startButton.position.x - 42, startButton.position.y - 10, 25, WHITE);
+        DrawText("Music", musicButton.position.x - 21, musicButton.position.y - 15, 18, WHITE);
+        DrawText("Sound", soundButton.position.x - 25, soundButton.position.y - 15, 18, WHITE);
+
+		// Müzik ve ses durumlarýnýn kontrolü
+        if (musicState == MUSIC_ON) DrawText("ON", musicButton.position.x - 10, musicButton.position.y + 5, 18, GREEN);
+        else if (musicState == MUSIC_OFF) DrawText("OFF", musicButton.position.x - 15, musicButton.position.y + 5, 18, RED);
+        if (soundState == SOUND_ON) DrawText("ON", soundButton.position.x - 10, soundButton.position.y + 5, 18, GREEN);
+        else if (soundState == SOUND_OFF) DrawText("OFF", soundButton.position.x - 15, soundButton.position.y + 5, 18, RED);
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            if (CheckCollisionPointCircle(mousePos, musicButton.position, musicButton.radius))
+            {
+                if (musicState == MUSIC_ON) musicState = MUSIC_OFF;
+                else if (musicState == MUSIC_OFF) musicState = MUSIC_ON;
+            }
+            if (CheckCollisionPointCircle(mousePos, soundButton.position, soundButton.radius))
+            {
+                if (soundState == SOUND_ON) soundState = SOUND_OFF;
+                else if (soundState == SOUND_OFF) soundState = SOUND_ON;
+            }
+        }
+		EndDrawing();
+    }
+    UnloadTexture(wallpaper);
+    CloseWindow();
+
+    if (gameState == PLAYING) playMenu();
 }
 
 void playMenu(void)
 {
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Underwater Dream");
     // Grid fonksiyonunu çaðýr
     InitGrid();
+
     // Þekerlerin yüklenmesi
     Texture2D candyTextures[CANDY_TYPES];
-    candyTextures[0] = LoadTexture("assets/blue.png");
-    candyTextures[1] = LoadTexture("assets/red.png");
-    candyTextures[2] = LoadTexture("assets/orange.png");
-    candyTextures[3] = LoadTexture("assets/purple.png");
-    candyTextures[4] = LoadTexture("assets/yellow.png");
+    candyTextures[0] = LoadTexture("assets/1.png");
+    candyTextures[1] = LoadTexture("assets/2.png");
+    candyTextures[2] = LoadTexture("assets/3.png");
+    candyTextures[3] = LoadTexture("assets/4.png");
+    candyTextures[4] = LoadTexture("assets/5.png");
+
     // Hamle, skor ve hedef puan
     int score = 0;
     int targetScore = 1500;
@@ -111,6 +149,9 @@ void playMenu(void)
     // Oyun döngüsü
     while (!WindowShouldClose())
     {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+
         // Fare týklama kontrolü
         Vector2 mousePos = GetMousePosition();
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
@@ -142,9 +183,7 @@ void playMenu(void)
                 }
             }
         }
-
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
+        
 
         // Üst bilgi çubuðu
         char info[128];
@@ -254,27 +293,13 @@ void playMenu(void)
         } while (matchFound);
 
         EndDrawing();
-
-        // Hamle ve puan kontrolü
-        if (movesLeft <= 0 && score < targetScore)
-        {
-            gameState = AFTERPLAY;
-            break;
-        }
-        // Oyun bitiþ kontrolü
-        if (gameState == AFTERPLAY) break;
-        if (score >= targetScore)
-        {
-            DrawText("Tebrikler! Hedef puaný geçtiniz!", 100, SCREEN_HEIGHT / 2, 20, GREEN);
-            gameState = AFTERPLAY;
-            break;
-        }
     }
     for (int i = 0; i < CANDY_TYPES; i++)
     {
         UnloadTexture(candyTextures[i]);
     }
-
+    CloseWindow();
+    if (gameState == 0) mainMenu();
 }
 
 void DropCandies(void) {
