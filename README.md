@@ -1,5 +1,5 @@
 **To-do List:**
-- [ ] Background image, arrangement of buttons and labels, writing the missing labels (Increase version by 0.1)
+- [x] Background image, arrangement of buttons and labels, writing the missing labels (Increase version by 0.1)
 - [ ] Main menu music, button sound, swap sound, explosion sound (Increase version by 0.1)
 - [ ] Scores are not working correctly, when losing, should restart from the beginning, when winning, return to the main menu. (Increase version by 0.5)
 
