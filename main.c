@@ -17,6 +17,14 @@ int grid[GRID_HEIGHT][GRID_WIDTH];
 // Þeker çeþitleri
 #define CANDY_TYPES 5
 
+// Butonlarý oluþturmak için genel bir struct.
+typedef struct
+{
+    Vector2 position;
+    float radius;
+    Color color;
+} Circle;
+
 // Seçilen hücre için baþlangýç deðeri
 Vector2 selected = { -1, -1 };
 
@@ -36,9 +44,14 @@ MusicState musicState = MUSIC_ON;
 typedef enum { SOUND_ON, SOUND_OFF } SoundState;
 SoundState soundState = SOUND_ON;
 
+// Kazanma durumu
+typedef enum { WIN, LOSE } WinState;
+WinState winState = LOSE;
+
 // Fonksiyonlar
 void mainMenu(void);
 void playMenu(void);
+void afterPlayMenu(void);
 void DropCandies(void);
 void InitGrid(void);
 
@@ -52,13 +65,6 @@ void main(void)
 void mainMenu(void)
 {
     InitWindow(600, 640, "Underwater Dream");
-    // Ana menü butonlarýný oluþturmak için genel bir struct.
-    typedef struct
-    {
-        Vector2 position;
-        float radius;
-        Color color;
-    } Circle;
 
     // Ana menü butonlarýnýn tanýmlanmasý
     int start_x = 300;
@@ -68,13 +74,13 @@ void mainMenu(void)
     Circle musicButton = { {300,390},40,BLACK };
     Circle soundButton = { {300,480},40,BLACK };
 
-	// Duvar kaðýdý yüklenmesi
+    // Duvar kaðýdý yüklenmesi
     Texture2D wallpaper = LoadTexture("assets/wallpaper.png");
 
     while (!WindowShouldClose())
     {
-		BeginDrawing();
-		// Arka planýn çizilmesi
+        BeginDrawing();
+        // Arka planýn çizilmesi
         DrawTexture(wallpaper, 0, 0, WHITE);
 
         // Butonlara týklama kontrolü
@@ -84,7 +90,7 @@ void mainMenu(void)
             if (CheckCollisionPointCircle(mousePos, (Vector2) { start_x, start_y }, start_radius))
             {
                 gameState = PLAYING;
-				break;
+                break;
             }
         }
         // Baþlýk
@@ -101,7 +107,7 @@ void mainMenu(void)
         DrawText("Music", musicButton.position.x - 21, musicButton.position.y - 15, 18, WHITE);
         DrawText("Sound", soundButton.position.x - 25, soundButton.position.y - 15, 18, WHITE);
 
-		// Müzik ve ses durumlarýnýn kontrolü
+        // Müzik ve ses durumlarýnýn kontrolü
         if (musicState == MUSIC_ON) DrawText("ON", musicButton.position.x - 10, musicButton.position.y + 5, 18, GREEN);
         else if (musicState == MUSIC_OFF) DrawText("OFF", musicButton.position.x - 15, musicButton.position.y + 5, 18, RED);
         if (soundState == SOUND_ON) DrawText("ON", soundButton.position.x - 10, soundButton.position.y + 5, 18, GREEN);
@@ -119,7 +125,7 @@ void mainMenu(void)
                 else if (soundState == SOUND_OFF) soundState = SOUND_ON;
             }
         }
-		EndDrawing();
+        EndDrawing();
     }
     UnloadTexture(wallpaper);
     CloseWindow();
@@ -183,7 +189,7 @@ void playMenu(void)
                 }
             }
         }
-        
+
 
         // Üst bilgi çubuðu
         char info[128];
@@ -293,6 +299,16 @@ void playMenu(void)
         } while (matchFound);
 
         EndDrawing();
+        if (score >= targetScore)
+        {
+            winState = WIN;
+            break;
+        }
+        if (movesLeft <= 0)
+        {
+            winState = LOSE;
+            break;
+        }
     }
     for (int i = 0; i < CANDY_TYPES; i++)
     {
@@ -300,6 +316,7 @@ void playMenu(void)
     }
     CloseWindow();
     if (gameState == 0) mainMenu();
+    afterPlayMenu();
 }
 
 void DropCandies(void) {
@@ -351,4 +368,50 @@ void InitGrid(void)
             grid[y][x] = candy;
         }
     }
+}
+
+void afterPlayMenu(void)
+{
+    // Oyun bittirme menüsü
+    Circle menuButton = { {400,400}, 80, DARKPURPLE };
+    Circle restartButton = { {400,600}, 80, DARKBLUE };
+
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Underwater Dream");
+    while (!WindowShouldClose())
+    {
+        BeginDrawing();
+        DrawRectangle(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, WHITE);
+        if (winState == WIN)
+        {
+            DrawText("You Win!", SCREEN_WIDTH / 4, SCREEN_HEIGHT / 5, 100, GREEN);
+        }
+
+        else if (winState == LOSE)
+        {
+            DrawText("Game Over", SCREEN_WIDTH / 5 - 20, SCREEN_HEIGHT / 5, 100, RED);
+            DrawCircleV(restartButton.position, restartButton.radius, restartButton.color);
+            DrawText("Try again!", 332, 585, 28, WHITE);
+        }
+
+        DrawCircleV(menuButton.position, menuButton.radius, menuButton.color);
+        DrawText(" Return\n  to the\nmain menu", 340, 355, 28, WHITE);
+
+        // Butonlara týklama kontrolü
+        Vector2 mousePos = GetMousePosition();
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        {
+            if (CheckCollisionPointCircle(mousePos, menuButton.position, menuButton.radius))
+            {
+                mainMenu();
+                break;
+            }
+            if (CheckCollisionPointCircle(mousePos, restartButton.position, restartButton.radius))
+            {
+                playMenu();
+                break;
+            }
+        }
+        EndDrawing();
+    }
+    CloseWindow();
 }
