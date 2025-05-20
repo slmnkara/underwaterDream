@@ -49,16 +49,28 @@ void LoadTextures(void);
 void UpdateMenu(void);
 void UpdateGameplay(void);
 void UpdateAfterGame(void);
+void resetGameStats(void);
 void UnloadTextures(void);
 
 void main(void)
 {
     srand(time(NULL));
     SetTargetFPS(60);
+
+    // Pencere ve ses cihazý
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Underwater Dream");
+	InitAudioDevice();
+
+    // Arka plan müziði
+	Music music = LoadMusicStream("assets/music.mp3");
+	PlayMusicStream(music);
+	SetMusicVolume(music, 0.2f);
+
     LoadTextures();
+
     while (!WindowShouldClose())
     {
+        if (musicState == MUSIC_ON) UpdateMusicStream(music);
 		BeginDrawing();
         switch (gameState)
         {
@@ -323,7 +335,6 @@ void UpdateGameplay(void)
 
 void UpdateAfterGame(void)
 {
-    
     if (winState == WIN)
     {
         ClearBackground(DARKGREEN);
@@ -351,12 +362,20 @@ void UpdateAfterGame(void)
         if (CheckCollisionPointRec(mousePos, afterGameUI.menuButton))
         {
             gameState = BEFOREPLAY;
+            resetGameStats();
         }
         if (CheckCollisionPointRec(mousePos, afterGameUI.restartButton))
         {
             gameState = PLAYING;
+            resetGameStats();
         }
     }
+}
+
+void resetGameStats(void)
+{
+    gameStats.movesLeft = 20;
+    gameStats.score = 0;
 }
 
 void UnloadTextures(void)
