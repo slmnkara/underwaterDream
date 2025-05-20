@@ -14,6 +14,7 @@
 Texture2D candyTextures[CANDY_TYPES];
 
 int grid[GRID_HEIGHT][GRID_WIDTH];
+int dragStartX = -1, dragStartY = -1;
 
 typedef enum { BEFOREPLAY, PLAYING, AFTERPLAY } GameState; GameState gameState = BEFOREPLAY;
 typedef enum { MUSIC_ON, MUSIC_OFF } MusicState; MusicState musicState = MUSIC_ON;
@@ -38,9 +39,6 @@ typedef struct
     Rectangle restartButton;
     Rectangle menuButton;
 } AfterGameUI; AfterGameUI afterGameUI;
-
-// Seçilen hücre için baþlangýç deðeri
-Vector2 selected = { -1, -1 };
 
 void DropCandies(void);
 
@@ -185,37 +183,37 @@ void UpdateMenu(void)
 void UpdateGameplay(void)
 {
     ClearBackground(RAYWHITE);
-    // Fare týklama kontrolü
+
+    // Sürükleme mekanizmasý
     Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    {
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
         if (mousePos.y >= UI_HEIGHT) {
-            int col = mousePos.x / CELL_SIZE;
-            int row = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
-
-            if (selected.x == -1) {
-                selected.x = col;
-                selected.y = row;
-            }
-            else {
-                if ((selected.x == col) && (selected.y == row)) {
-                    selected.x = -1;
-                    selected.y = -1;
-                }
-                else if ((selected.x == col && abs((int)row - (int)selected.y) == 1) ||
-                    (selected.y == row && abs((int)col - (int)selected.x) == 1)) {
-                    int temp = grid[row][col];
-                    grid[row][col] = grid[(int)selected.y][(int)selected.x];
-                    grid[(int)selected.y][(int)selected.x] = temp;
-
-                    selected.x = -1;
-                    selected.y = -1;
-
-                    gameStats.movesLeft--;
-                }
-            }
+            dragStartX = mousePos.x / CELL_SIZE;
+            dragStartY = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
         }
     }
+    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+        if (dragStartX != -1 && dragStartY != -1) {
+            int dropX = mousePos.x / CELL_SIZE;
+            int dropY = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
+
+            // Komþuluk kontrolü
+            if ((abs(dragStartX - dropX) == 1 && dragStartY == dropY) ||
+                (abs(dragStartY - dropY) == 1 && dragStartX == dropX)) {
+
+                // Þekerleri deðiþtir
+                int temp = grid[dragStartY][dragStartX];
+                grid[dragStartY][dragStartX] = grid[dropY][dropX];
+                grid[dropY][dropX] = temp;
+
+                gameStats.movesLeft--;
+            }
+
+            // Temizle
+            dragStartX = dragStartY = -1;
+        }
+    }
+
 
     // Üst bilgi çubuðu
     char info[128];
@@ -233,10 +231,6 @@ void UpdateGameplay(void)
 
             DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
             DrawRectangleLinesEx(cell, 1, DARKPURPLE);
-
-            if (selected.x == x && selected.y == y) {
-                DrawRectangleLinesEx(cell, 3, BLUE);
-            }
         }
     }
 
@@ -323,14 +317,12 @@ void UpdateGameplay(void)
             DropCandies();
         }
     } while (matchFound);
+
+    // Sonucu
     if (gameStats.score >= gameStats.targetScore)
     {
         winState = WIN;
     }
-    else if (gameStats.movesLeft <= 0)
-    {
-        winState = LOSE;
-	}
 }
 
 void UpdateAfterGame(void)
@@ -376,6 +368,7 @@ void resetGameStats(void)
 {
     gameStats.movesLeft = 20;
     gameStats.score = 0;
+    winState = LOSE;
 }
 
 void UnloadTextures(void)
