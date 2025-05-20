@@ -3,6 +3,7 @@
 #include "time.h"
 #include "stdlib.h"
 
+// Tahta boyutu, hücre boyutlarý ve ekran boyutlarý
 #define GRID_WIDTH 8
 #define GRID_HEIGHT 8
 #define CELL_SIZE 100
@@ -10,23 +11,31 @@
 #define SCREEN_WIDTH (GRID_WIDTH * CELL_SIZE)
 #define SCREEN_HEIGHT ((GRID_HEIGHT * CELL_SIZE) + UI_HEIGHT)
 
+// Þeker türleri ve tanýmlanmasý
 #define CANDY_TYPES 5
 Texture2D candyTextures[CANDY_TYPES];
 
+// Oyun tahtasý tanýmlanmasý
 int grid[GRID_HEIGHT][GRID_WIDTH];
+
+// Sürükleme baþlangýç koordinatlarý
 int dragStartX = -1, dragStartY = -1;
 
+// Oyun durumlarý ve ses ayarlarý
 typedef enum { BEFOREPLAY, PLAYING, AFTERPLAY } GameState; GameState gameState = BEFOREPLAY;
+typedef enum { WIN, LOSE } WinState; WinState winState = LOSE;
 typedef enum { MUSIC_ON, MUSIC_OFF } MusicState; MusicState musicState = MUSIC_ON;
 typedef enum { SOUND_ON, SOUND_OFF } SoundState; SoundState soundState = SOUND_ON;
-typedef enum { WIN, LOSE } WinState; WinState winState = LOSE;
 
+// Oyun skorlarý bileþenleri
 typedef struct
 {
     int score;
     int targetScore;
     int movesLeft;
 } GameStats; GameStats gameStats;
+
+// Anamenü bileþenleri
 typedef struct
 {
     Rectangle playButton;
@@ -34,11 +43,15 @@ typedef struct
     Rectangle soundButton;
     Texture2D wallpaper;
 } MenuUI; MenuUI menuUI;
+
+// Oyun sonrasý menüsü bileþenleri
 typedef struct
 {
     Rectangle restartButton;
     Rectangle menuButton;
 } AfterGameUI; AfterGameUI afterGameUI;
+
+// Ses efektleri bileþenleri
 typedef struct
 {
     Music music;
@@ -49,37 +62,44 @@ typedef struct
     Sound loseSound;
 } SoundEffects; SoundEffects soundEffects;
 
-void InitAndLoad();
-void UpdateMenu();
-void UpdateGameplay();
-void DropCandies();
-void UpdateAfterGame();
-void resetGameStats();
-void Unload();
+// Fonksiyon Prototipleri
+void InitAndLoad(); // Tanýmlama ve yükleme fonksiyonu
+void UpdateMenu(); // Anamenü fonksiyonu
+void UpdateGameplay(); // Oyun fonksiyonu
+void DropCandies(); // Þeker düþürme fonksiyonu
+void UpdateAfterGame(); // Oyun sonrasý fonksiyonu
+void resetGameStats(); // Oyun istatistiklerini sýfýrlama fonksiyonu
+void Unload(); // Kaynaklarý serbest býrakma fonksiyonu
 
 void main()
 {
+	// Rastgele sayý üreteci için tohumlama
     srand(time(NULL));
+
+	// FPS sabitleme ayarý
     SetTargetFPS(60);
 
-    // Pencere ve ses cihazý
+    // Pencere ve ses cihazýný tanýmlama
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Underwater Dream");
 	InitAudioDevice();
+
+	// Gerekli nesneleri tanýmlama ve yükleme
     InitAndLoad();
 
+	// Oyun döngüsü
     while (!WindowShouldClose())
     {
-        
 		BeginDrawing();
+
+        // Oyun durumuna göre ekraný güncelleme
         switch (gameState)
         {
         case BEFOREPLAY:
-            if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
             UpdateMenu();
             break;
         case PLAYING:
-            if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
 			UpdateGameplay();
+			// Skora göre oyunu bitirme kontrolü
             if (gameStats.movesLeft <= 0 || gameStats.score >= gameStats.targetScore)
             {
                 gameState = AFTERPLAY;
@@ -91,45 +111,48 @@ void main()
         }
         EndDrawing();
 	}
+
+	// Oyun döngüsü sona erdiðinde kaynaklarý serbest býrakma
 	Unload();
+
+	// Oyun döngüsü sona erdiðinde ses cihazýný kapatma ve pencereyi kapatma
 	CloseAudioDevice();
     CloseWindow();
 }
 
 void InitAndLoad()
 {
-    // Menü
+	// MenuUI bileþenlerinin tanýmlanmasý ve yüklenmesi
     menuUI.playButton = (Rectangle){ 300,300,200,50 };
     menuUI.musicButton = (Rectangle){ 325,410,150,50 };
     menuUI.soundButton = (Rectangle){ 325,490,150,50 };
     menuUI.wallpaper = LoadTexture("assets/images/wallpaper.png");
 
-    // Arka plan müziði
+	// Arkaplan müziðinin yüklenmesi ve ayarlanmasý
     soundEffects.music = LoadMusicStream("assets/soundEffects/music.mp3");
     PlayMusicStream(soundEffects.music);
     SetMusicVolume(soundEffects.music, 0.2f);
 
-    // Ses efektleri
+	// Ses efektlerinin yüklenmesi ve ayarlanmasý
     soundEffects.buttonClick = LoadSound("assets/soundEffects/button.mp3");
     soundEffects.swapSound = LoadSound("assets/soundEffects/swap.mp3");
     soundEffects.explosionSound = LoadSound("assets/soundEffects/explosion.mp3");
     soundEffects.winSound = LoadSound("assets/soundEffects/win.mp3");
     soundEffects.loseSound = LoadSound("assets/soundEffects/lose.mp3");
-
     SetSoundVolume(soundEffects.buttonClick, 0.5f);
     SetSoundVolume(soundEffects.swapSound, 0.2f);
     SetSoundVolume(soundEffects.explosionSound, 0.1f);
     SetSoundVolume(soundEffects.winSound, 0.8f);
     SetSoundVolume(soundEffects.loseSound, 0.5f);
 
-    // Oyun
+	// Þekerlerin yüklenmesi
     candyTextures[0] = LoadTexture("assets/images/image1.png");
     candyTextures[1] = LoadTexture("assets/images/image2.png");
     candyTextures[2] = LoadTexture("assets/images/image3.png");
     candyTextures[3] = LoadTexture("assets/images/image4.png");
     candyTextures[4] = LoadTexture("assets/images/image5.png");
 
-	// Oyun skorlarý
+	// Oyun skorlarýnýn tanýmlanmasý
     gameStats.score = 0;
     gameStats.targetScore = 1500;
     gameStats.movesLeft = 20;
@@ -151,39 +174,27 @@ void InitAndLoad()
         }
     }
 
-    // Oyun Sonrasý
+	// Oyun sonrasý menüsü bileþenlerinin tanýmlanmasý
     afterGameUI.menuButton = (Rectangle){ 200,400,400,100 };
     afterGameUI.restartButton = (Rectangle){ 275,600,250,75 };
 }
 
 void UpdateMenu()
 {
+	// Arkaplan müziðinin çalýnmasý
+    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
+
     // Arka planýn çizilmesi
     DrawTexture(menuUI.wallpaper, 0, 0, WHITE);
-
-    // Butonlara týklama kontrolü
-    Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    {
-        if (CheckCollisionPointRec(mousePos, menuUI.playButton))
-        {
-            if (soundState == SOUND_ON)
-            {
-                PlaySound(soundEffects.buttonClick);
-            }
-            gameState = PLAYING;
-        }
-    }
-    // Baþlýk
-    DrawText("Underwater Dream", 200, 120, 42, DARKPURPLE);
-    DrawText("Similar to Candy Crush Saga. Coded with Raylib.", 150, 170, 21, BLACK);
-
+    
     // Butonlarýn çizilmesi
     DrawRectangleRec(menuUI.playButton, DARKPURPLE);
     DrawRectangleRec(menuUI.musicButton, DARKBLUE);
     DrawRectangleRec(menuUI.soundButton, DARKBLUE);
 
-    // Baþlýklarýn çizilmesi
+	// Baþlýklarýn çizilmesi
+    DrawText("Underwater Dream", 200, 120, 42, DARKPURPLE);
+    DrawText("Similar to Candy Crush Saga. Coded with Raylib.", 150, 170, 21, BLACK);
     DrawText("Start!", menuUI.playButton.x+65, menuUI.playButton.y+15, 25, WHITE);
     DrawText("Music", menuUI.musicButton.x+20, menuUI.musicButton.y+17, 18, WHITE);
     DrawText("Sound", menuUI.soundButton.x+20, menuUI.soundButton.y+17, 18, WHITE);
@@ -193,15 +204,27 @@ void UpdateMenu()
     if (soundState == SOUND_ON) DrawText("ON", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, GREEN);
     else if (soundState == SOUND_OFF) DrawText("OFF", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, RED);
 
-    // Müzik ve ses kontrolü
+	// Buton týklama kontrolü
+    Vector2 mousePos = GetMousePosition();
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     {
+		// Oynama butonuna týklama kontrolü
+        if (CheckCollisionPointRec(mousePos, menuUI.playButton))
+        {
+            if (soundState == SOUND_ON)
+            {
+                PlaySound(soundEffects.buttonClick);
+            }
+            gameState = PLAYING;
+        }
+		// Müzik butonuna týklama kontrolü
         if (CheckCollisionPointRec(mousePos, menuUI.musicButton))
         {
             if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
             if (musicState == MUSIC_ON) musicState = MUSIC_OFF;
             else if (musicState == MUSIC_OFF) musicState = MUSIC_ON;
         }
+		// Ses butonuna týklama kontrolü
         if (CheckCollisionPointRec(mousePos, menuUI.soundButton))
         {
             if (soundState == SOUND_ON) soundState = SOUND_OFF;
@@ -216,6 +239,10 @@ void UpdateMenu()
 
 void UpdateGameplay()
 {
+	// Arkaplan müziðinin çalýnmasý
+    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
+
+	// Arka planýn çizilmesi
     ClearBackground(RAYWHITE);
 
     // Sürükleme mekanizmasý
@@ -254,7 +281,7 @@ void UpdateGameplay()
     snprintf(info, sizeof(info), "Points: %d / %d    Moves Left: %d", gameStats.score, gameStats.targetScore, gameStats.movesLeft);
     DrawText(info, 125, 20, 30, DARKPURPLE);
 
-    // Oyun tahtasýný çiz
+    // Oyun tahtasýnýn çizilmesi
     for (int y = 0; y < GRID_HEIGHT; y++) {
         for (int x = 0; x < GRID_WIDTH; x++) {
             Rectangle cell = { x * CELL_SIZE, y * CELL_SIZE + UI_HEIGHT, CELL_SIZE, CELL_SIZE };
@@ -272,7 +299,7 @@ void UpdateGameplay()
     do {
         matchFound = false;
 
-        // Yatay eþleþmeler
+        // Yatay eþleþmelerin bulunmasý
         for (int y = 0; y < GRID_HEIGHT; y++) {
             for (int x = 0; x < GRID_WIDTH - 4; x++) {
                 int candy = grid[y][x];
@@ -309,7 +336,7 @@ void UpdateGameplay()
             }
         }
 
-        // Dikey eþleþmeler
+        // Dikey eþleþmelerin bulunmasý
         for (int x = 0; x < GRID_WIDTH; x++) {
             for (int y = 0; y < GRID_HEIGHT - 4; y++) {
                 int candy = grid[y][x];
@@ -345,7 +372,7 @@ void UpdateGameplay()
                 }
             }
         }
-
+		// Eþleþme bulunduðunda þekerleri düþürme
         if (matchFound)
         {
 			if (soundState == SOUND_ON) PlaySound(soundEffects.explosionSound);
@@ -373,10 +400,12 @@ void DropCandies() {
         {
             if (grid[y][x] == -1)
             {
+				// Üstteki þekerleri bul ve aþaðý kaydýr
                 for (int k = y - 1; k >= 0; k--)
                 {
                     if (grid[k][x] != -1)
                     {
+						// Þekerin yeni konumunu ayarla
                         grid[y][x] = grid[k][x];
                         grid[k][x] = -1;
                         break;
@@ -386,10 +415,12 @@ void DropCandies() {
         }
     }
 
+	// Yeni þekerleri rastgele oluþtur
     for (int y = 0; y < GRID_HEIGHT; y++)
     {
         for (int x = 0; x < GRID_WIDTH; x++)
         {
+			// Eðer hücre boþsa, yeni bir þeker oluþtur
             if (grid[y][x] == -1)
             {
                 grid[y][x] = GetRandomValue(0, CANDY_TYPES - 1);
@@ -400,26 +431,37 @@ void DropCandies() {
 
 void UpdateAfterGame()
 {
+    // Oyun kazanýldýysa
     if (winState == WIN)
     {
+		// Arka planýn çizilmesi
         ClearBackground(DARKGREEN);
+
+		// Butonun çizilmesi
         DrawRectangleRec(afterGameUI.menuButton, LIGHTGRAY);
 
+		// Baþlýklarýn çizilmesi
         DrawText("YOU WIN!", SCREEN_WIDTH / 5+15, SCREEN_HEIGHT / 5, 100, RAYWHITE);
         DrawText(" Return to the main menu", afterGameUI.menuButton.x+5, afterGameUI.menuButton.y+33, 30, DARKPURPLE);
     }
 
+	// Oyun kaybedildiyse
     else if (winState == LOSE)
     {
+		// Arka planýn çizilmesi
 		ClearBackground(RED);
+
+		// Butonlarýn çizilmesi
         DrawRectangleRec(afterGameUI.menuButton, LIGHTGRAY);
         DrawRectangleRec(afterGameUI.restartButton, DARKPURPLE);
 
+		// Baþlýklarýn çizilmesi
         DrawText("GAME OVER!", SCREEN_WIDTH / 8 - 10, SCREEN_HEIGHT / 5, 100, RAYWHITE);
         DrawText(" Return to the main menu", afterGameUI.menuButton.x+5, afterGameUI.menuButton.y+33, 30, DARKPURPLE);
         DrawText("Try again!", afterGameUI.restartButton.x+57, afterGameUI.restartButton.y+22, 28, LIGHTGRAY);
     }
 
+	// Oyun sonrasý skorlarýn sýfýrlanmasý
     resetGameStats();
 
     // Butonlara týklama kontrolü
@@ -447,7 +489,9 @@ void resetGameStats()
 
 void Unload()
 {
+	// Kaynaklarý serbest býrakma
     UnloadTexture(menuUI.wallpaper);
+
     for (int i = 0; i < CANDY_TYPES; i++)
     {
         UnloadTexture(candyTextures[i]);
