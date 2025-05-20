@@ -66,12 +66,13 @@ typedef struct
 void InitAndLoad(); // Tanýmlama ve yükleme fonksiyonu
 void UpdateMenu(); // Anamenü fonksiyonu
 void UpdateGameplay(); // Oyun fonksiyonu
+void CheckMatches(); // Eþleþmeleri kontrol etme fonksiyonu
 void DropCandies(); // Þeker düþürme fonksiyonu
 void UpdateAfterGame(); // Oyun sonrasý fonksiyonu
-void resetGameStats(); // Oyun istatistiklerini sýfýrlama fonksiyonu
+void ResetGameStats(); // Oyun istatistiklerini sýfýrlama fonksiyonu
 void Unload(); // Kaynaklarý serbest býrakma fonksiyonu
 
-void main()
+int main(void)
 {
 	// Rastgele sayý üreteci için tohumlama
     srand(time(NULL));
@@ -118,6 +119,7 @@ void main()
 	// Oyun döngüsü sona erdiðinde ses cihazýný kapatma ve pencereyi kapatma
 	CloseAudioDevice();
     CloseWindow();
+    return 0;
 }
 
 void InitAndLoad()
@@ -295,6 +297,24 @@ void UpdateGameplay()
         }
     }
 
+	// Eþleþmeleri kontrol etme
+	CheckMatches();
+
+	// Sonuç kontrolü
+    if (gameStats.score >= gameStats.targetScore)
+    {
+        winState = WIN;
+		if (soundState == SOUND_ON) PlaySound(soundEffects.winSound);
+    }
+    else if (gameStats.movesLeft <= 0)
+    {
+        winState = LOSE;
+        if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
+    }
+}
+
+void CheckMatches()
+{
     bool matchFound;
     do {
         matchFound = false;
@@ -372,25 +392,13 @@ void UpdateGameplay()
                 }
             }
         }
-		// Eþleþme bulunduðunda þekerleri düþürme
+        // Eþleþme bulunduðunda þekerleri düþürme
         if (matchFound)
         {
-			if (soundState == SOUND_ON) PlaySound(soundEffects.explosionSound);
+            if (soundState == SOUND_ON) PlaySound(soundEffects.explosionSound);
             DropCandies();
         }
     } while (matchFound);
-
-	// Sonuç kontrolü
-    if (gameStats.score >= gameStats.targetScore)
-    {
-        winState = WIN;
-		if (soundState == SOUND_ON) PlaySound(soundEffects.winSound);
-    }
-    else if (gameStats.movesLeft <= 0)
-    {
-        winState = LOSE;
-        if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
-    }
 }
 
 void DropCandies() {
@@ -462,7 +470,7 @@ void UpdateAfterGame()
     }
 
 	// Oyun sonrasý skorlarýn sýfýrlanmasý
-    resetGameStats();
+    ResetGameStats();
 
     // Butonlara týklama kontrolü
     Vector2 mousePos = GetMousePosition();
@@ -481,7 +489,7 @@ void UpdateAfterGame()
     }
 }
 
-void resetGameStats()
+void ResetGameStats()
 {
     gameStats.movesLeft = 20;
     gameStats.score = 0;
