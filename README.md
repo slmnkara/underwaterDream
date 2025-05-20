@@ -1,9 +1,11 @@
 **To-do List:**
 - [x] Background image, arrangement of buttons and labels, writing the missing labels (Increase version by 0.1)
-- [ ] Main menu music, button sound, swap sound, explosion sound (Increase version by 0.1)
 - [x] Scores are not working correctly, when losing, should restart from the beginning, when winning, return to the main menu. (Increase version by 0.05)
-- [ ] Swapping between menus should be fixed (Increase version by 0.05)
+- [x] Swapping between menus should be fixed (Increase version by 0.05)
 - [ ] Add drag mechanics (Increase version by 0.1)
+- [ ] Main menu music, button sound, swap sound, explosion sound (Increase version by 0.1)
+- [ ] File operations, levels
+- [ ] Animations
 
 **Summary (Abstract / Executive Summary):** A brief description summarizing the project.
 
