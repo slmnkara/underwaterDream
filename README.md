@@ -2,8 +2,8 @@
 - [x] Background image, arrangement of buttons and labels, writing the missing labels
 - [x] Scores are not working correctly, when losing, should restart from the beginning, when winning, return to the main menu.
 - [x] Swapping between menus should be fixed
-- [ ] Add drag mechanics
-- [ ] Main menu music, button sound, swap sound, explosion sound
+- [x] Add drag mechanics
+- [x] Main menu music, button sound, swap sound, explosion sound
 - [ ] File operations (levels and highest score)
 - [ ] Animations
 
