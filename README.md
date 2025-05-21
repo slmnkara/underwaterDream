@@ -5,8 +5,10 @@
 - [x] Add drag mechanics
 - [x] Main menu music, button sound, swap sound, explosion sound
 - [x] Levels
-- [ ] File operations
-- [ ] Animations
+- [ ] Dosyalama işlemiyle oyuncunun kaçıncı seviyede olduğu belli olmalı.
+- [ ] Sıfırlama tuşu olmalı, oyuncu kayıtları silebilmeli.
+- [ ] Oyunu oynarken ana menüye dönme şansı verilmeli ve kaçıncı seviyede olduğu görülmeli
+- [ ] Animasyonlar
 
 **Summary (Abstract / Executive Summary):** A brief description summarizing the project.
 
