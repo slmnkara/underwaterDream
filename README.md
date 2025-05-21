@@ -4,7 +4,8 @@
 - [x] Swapping between menus should be fixed
 - [x] Add drag mechanics
 - [x] Main menu music, button sound, swap sound, explosion sound
-- [ ] File operations (levels and highest score)
+- [x] Levels
+- [ ] File operations
 - [ ] Animations
 
 **Summary (Abstract / Executive Summary):** A brief description summarizing the project.
