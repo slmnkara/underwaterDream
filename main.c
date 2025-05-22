@@ -22,7 +22,7 @@ int grid[GRID_HEIGHT][GRID_WIDTH];
 int dragStartX = -1, dragStartY = -1;
 
 // Oyun durumlarý ve ses ayarlarý
-typedef enum { BEFOREPLAY, LEVELSELECTION, PLAYING, AFTERPLAY } GameState; GameState gameState = BEFOREPLAY;
+typedef enum { BEFOREPLAY, LEVELSELECTION, PLAYING, AFTERPLAY } GameState; GameState gameState = 0;
 typedef enum { WIN, LOSE } WinState; WinState winState = LOSE;
 typedef enum { MUSIC_ON, MUSIC_OFF } MusicState; MusicState musicState = MUSIC_ON;
 typedef enum { SOUND_ON, SOUND_OFF } SoundState; SoundState soundState = SOUND_ON;
@@ -30,6 +30,7 @@ typedef enum { SOUND_ON, SOUND_OFF } SoundState; SoundState soundState = SOUND_O
 // Oyun istatistikleri bileþenleri
 typedef struct
 {
+    int level;
     int score;
     int targetScore;
     int movesLeft;
@@ -55,17 +56,9 @@ typedef struct
 // Seviye seçimi bileþenleri
 typedef struct
 {
-	Rectangle level1Button;
-	Rectangle level2Button;
-	Rectangle level3Button;
-	Rectangle level4Button;
-	Rectangle level5Button;
-    int level1TargetScore;
-    int level2TargetScore;
-    int level3TargetScore;
-    int level4TargetScore;
-    int level5TargetScore;
-} LevelSelectionUI; LevelSelectionUI levelSelectionUI;
+    Rectangle LevelButton[5];
+    int TargetScore[5];
+} Level; Level level;
 
 // Ses efektleri bileþenleri
 typedef struct
@@ -78,43 +71,36 @@ typedef struct
     Sound loseSound;
 } SoundEffects; SoundEffects soundEffects;
 
-// Oyun verileri bileþenleri
-typedef struct {
-    int level;
-} GameData; GameData gameData;
-
-// Fonksiyon Prototipleri
-void InitAndLoad(); // Tanýmlama ve yükleme fonksiyonu
-void UpdateMenu(); // Anamenü fonksiyonu
-void UpdateLevelSelection(); // Seviye seçimi fonksiyonu
-void UpdateGameplay(); // Oyun fonksiyonu
-void CheckMatches(); // Eþleþmeleri kontrol etme fonksiyonu
-void DropCandies(); // Þeker düþürme fonksiyonu
-void UpdateAfterGame(); // Oyun sonrasý fonksiyonu
-void ResetGameStats(); // Oyun istatistiklerini sýfýrlama fonksiyonu
-void Unload(); // Kaynaklarý serbest býrakma fonksiyonu
+// Function prototypes
+void InitAndLoad();
+void UpdateMenu();
+void UpdateLevelSelection();
+void UpdateGameplay();
+void CheckMatches();
+void DropCandies();
+void UpdateAfterGame();
+void Unload();
+void ButtonClick(Rectangle, int, bool, bool, int);
+void Dragging();
+void UpdateMusic();
+void UpdateInGameUI();
+void UpdateGrid();
+void UpdateResult();
 
 int main(void)
 {
-	// Rastgele sayý üreteci için tohumlama
-    srand(time(NULL));
-
-	// FPS sabitleme ayarý
     SetTargetFPS(60);
-
-    // Pencere ve ses cihazýný tanýmlama
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Underwater Dream");
 	InitAudioDevice();
 
-	// Gerekli nesneleri tanýmlama ve yükleme
+	// Initializing requirements and loading textures
     InitAndLoad();
 
-	// Oyun döngüsü
     while (!WindowShouldClose())
     {
 		BeginDrawing();
 
-        // Oyun durumuna göre ekraný güncelleme
+        // Updating the screen depending on gameState
         switch (gameState)
         {
         case BEFOREPLAY:
@@ -125,11 +111,6 @@ int main(void)
 			break;
         case PLAYING:
 			UpdateGameplay();
-			// Skora göre oyunu bitirme kontrolü
-            if (gameStats.movesLeft <= 0 || gameStats.score >= gameStats.targetScore)
-            {
-                gameState = AFTERPLAY;
-			}
             break;
         case AFTERPLAY:
 			UpdateAfterGame();
@@ -137,11 +118,9 @@ int main(void)
         }
         EndDrawing();
 	}
-
 	// Oyun döngüsü sona erdiðinde kaynaklarý serbest býrakma
 	Unload();
 
-	// Oyun döngüsü sona erdiðinde ses cihazýný kapatma ve pencereyi kapatma
 	CloseAudioDevice();
     CloseWindow();
     return 0;
@@ -149,35 +128,35 @@ int main(void)
 
 void InitAndLoad()
 {
-    // Baþlangýç seviyesinin belirlenmesi
-    gameData.level = 1;
-    printf("!!! Level is set to 1.\n");
-
-    // Seviyelerin hedeflenen puanlarýnýn belirlenmesi
-    levelSelectionUI.level1TargetScore = 1000;
-    levelSelectionUI.level2TargetScore = 1250;
-    levelSelectionUI.level3TargetScore = 1500;
-    levelSelectionUI.level4TargetScore = 1750;
-    levelSelectionUI.level5TargetScore = 2000;
-
-    // Oyun skorlarýnýn belirlenmesi
-    gameStats.score = 0;
-    printf("!!! Score is set to 0.\n");
-    gameStats.movesLeft = 20;
-    printf("!!! Moves Left is set to 20.\n");
-
-	// MenuUI bileþenlerinin tanýmlanmasý ve yüklenmesi
+        // UI COMPONENTS
+    // menuUI
     menuUI.playButton = (Rectangle){ 300,300,200,50 };
     menuUI.musicButton = (Rectangle){ 325,410,150,50 };
     menuUI.soundButton = (Rectangle){ 325,490,150,50 };
     menuUI.wallpaper = LoadTexture("assets/images/wallpaper.png");
+    // levelUI
+    level.LevelButton[0] = (Rectangle){ 300, 275, 200, 50 };
+    level.LevelButton[1] = (Rectangle){ 300, 375, 200, 50 };
+    level.LevelButton[2] = (Rectangle){ 300, 475, 200, 50 };
+    level.LevelButton[3] = (Rectangle){ 300, 575, 200, 50 };
+    level.LevelButton[4] = (Rectangle){ 300, 675, 200, 50 };
+    // gameUI
+    candyTextures[0] = LoadTexture("assets/images/image1.png");
+    candyTextures[1] = LoadTexture("assets/images/image2.png");
+    candyTextures[2] = LoadTexture("assets/images/image3.png");
+    candyTextures[3] = LoadTexture("assets/images/image4.png");
+    candyTextures[4] = LoadTexture("assets/images/image5.png");
+    // afterGameUI
+    afterGameUI.menuButton = (Rectangle){ 200,400,400,100 };
+    afterGameUI.restartButton = (Rectangle){ 275,600,250,75 };
+    afterGameUI.nextLevelButton = (Rectangle){ 275,600,250,75 };
 
-	// Arkaplan müziðinin yüklenmesi ve ayarlanmasý
+        // MUSIC AND SOUND EFFECTS
+    // Background music
     soundEffects.music = LoadMusicStream("assets/soundEffects/music.mp3");
     PlayMusicStream(soundEffects.music);
     SetMusicVolume(soundEffects.music, 0.2f);
-
-	// Ses efektlerinin yüklenmesi ve ayarlanmasý
+    // Sound Effects
     soundEffects.buttonClick = LoadSound("assets/soundEffects/button.mp3");
     soundEffects.swapSound = LoadSound("assets/soundEffects/swap.mp3");
     soundEffects.explosionSound = LoadSound("assets/soundEffects/explosion.mp3");
@@ -189,21 +168,22 @@ void InitAndLoad()
     SetSoundVolume(soundEffects.winSound, 0.8f);
     SetSoundVolume(soundEffects.loseSound, 0.5f);
 
-	// Seviye seçimi bileþenlerinin tanýmlanmasý
-    levelSelectionUI.level1Button = (Rectangle){ 300, 275, 200, 50 };
-    levelSelectionUI.level2Button = (Rectangle){ 300, 375, 200, 50 };
-    levelSelectionUI.level3Button = (Rectangle){ 300, 475, 200, 50 };
-    levelSelectionUI.level4Button = (Rectangle){ 300, 575, 200, 50 };
-    levelSelectionUI.level5Button = (Rectangle){ 300, 675, 200, 50 };
+        // GAMEDATA
+    // If there are any data in the file
+    // 
+    // Initializing level, score and moves left
+    gameStats.level = 1;
+    gameStats.score = 0;
+    gameStats.movesLeft = 20;
+    // Initializing target scores for each level
+    int tempScore = 1000;
+    for (int n = 0; n <= 4; n++)
+    {
+        level.TargetScore[n] = tempScore;
+        tempScore += 250;
+    }
 
-	// Þekerlerin yüklenmesi
-    candyTextures[0] = LoadTexture("assets/images/image1.png");
-    candyTextures[1] = LoadTexture("assets/images/image2.png");
-    candyTextures[2] = LoadTexture("assets/images/image3.png");
-    candyTextures[3] = LoadTexture("assets/images/image4.png");
-    candyTextures[4] = LoadTexture("assets/images/image5.png");
-
-	// Oyun tahtasýnýn baþlatýlmasý
+	// Initializing first values for candies
     for (int y = 0; y < GRID_HEIGHT; y++)
     {
         for (int x = 0; x < GRID_WIDTH; x++)
@@ -219,221 +199,71 @@ void InitAndLoad()
             grid[y][x] = candy;
         }
     }
-
-	// Oyun sonrasý menüsü bileþenlerinin tanýmlanmasý
-    afterGameUI.menuButton = (Rectangle){ 200,400,400,100 };
-    afterGameUI.restartButton = (Rectangle){ 275,600,250,75 };
-    afterGameUI.nextLevelButton = (Rectangle){ 275,600,250,75 };
 }
 
 void UpdateMenu()
 {
-	// Arkaplan müziðinin çalýnmasý
-    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
+    UpdateMusic();
 
-    // Arka planýn çizilmesi
+    // Drawing wallpaper, buttons and labels for main menu.
     DrawTexture(menuUI.wallpaper, 0, 0, WHITE);
-    
-    // Butonlarýn çizilmesi
     DrawRectangleRec(menuUI.playButton, DARKPURPLE);
     DrawRectangleRec(menuUI.musicButton, DARKBLUE);
     DrawRectangleRec(menuUI.soundButton, DARKBLUE);
-
-	// Baþlýklarýn çizilmesi
     DrawText("Underwater Dream", 200, 120, 42, DARKPURPLE);
     DrawText("Similar to Candy Crush Saga. Coded with Raylib.", 150, 170, 21, BLACK);
     DrawText("Start!", menuUI.playButton.x+65, menuUI.playButton.y+15, 25, WHITE);
     DrawText("Music", menuUI.musicButton.x+20, menuUI.musicButton.y+17, 18, WHITE);
     DrawText("Sound", menuUI.soundButton.x+20, menuUI.soundButton.y+17, 18, WHITE);
 
+    // Control of ON-OFF labels
     if (musicState == MUSIC_ON) DrawText("ON", menuUI.musicButton.x + 100, menuUI.musicButton.y + 17, 18, GREEN);
-    else if (musicState == MUSIC_OFF) DrawText("OFF", menuUI.musicButton.x + 100, menuUI.musicButton.y + 17, 18, RED);
+    else DrawText("OFF", menuUI.musicButton.x + 100, menuUI.musicButton.y + 17, 18, RED);
     if (soundState == SOUND_ON) DrawText("ON", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, GREEN);
-    else if (soundState == SOUND_OFF) DrawText("OFF", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, RED);
+    else DrawText("OFF", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, RED);
 
-	// Buton týklama kontrolü
-    Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    {
-		// Oynama butonuna týklama kontrolü
-        if (CheckCollisionPointRec(mousePos, menuUI.playButton))
-        {
-            if (soundState == SOUND_ON)
-            {
-                PlaySound(soundEffects.buttonClick);
-            }
-            gameState = LEVELSELECTION;
-        }
-		// Müzik butonuna týklama kontrolü
-        if (CheckCollisionPointRec(mousePos, menuUI.musicButton))
-        {
-            if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-            if (musicState == MUSIC_ON) musicState = MUSIC_OFF;
-            else if (musicState == MUSIC_OFF) musicState = MUSIC_ON;
-        }
-		// Ses butonuna týklama kontrolü
-        if (CheckCollisionPointRec(mousePos, menuUI.soundButton))
-        {
-            if (soundState == SOUND_ON) soundState = SOUND_OFF;
-            else if (soundState == SOUND_OFF)
-            {
-                soundState = SOUND_ON;
-				PlaySound(soundEffects.buttonClick);
-            }
-        }
-    }
+    // Control of buttons
+    ButtonClick(menuUI.playButton, 1, 0, 0, -1);
+    ButtonClick(menuUI.musicButton, 0, 1, 0, -1);
+    ButtonClick(menuUI.soundButton, 0, 0, 1, -1);
 }
 
 void UpdateLevelSelection()
 {
-    // Arkaplan müziðinin çalýnmasý
-    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
-
-    // Arka planýn çizilmesi
+    UpdateMusic();
     ClearBackground(RAYWHITE);
 
-    // Seviye butonlarý ve baþlýklarýnýn çizilmesi
-    DrawRectangleRec(levelSelectionUI.level1Button, LIGHTGRAY);
-    DrawText("Level 1", levelSelectionUI.level1Button.x + 60, levelSelectionUI.level1Button.y + 13, 25, DARKPURPLE);
-    if (gameData.level >= 2)
-    {
-        DrawRectangleRec(levelSelectionUI.level2Button, LIGHTGRAY);
-        DrawText("Level 2", levelSelectionUI.level2Button.x + 60, levelSelectionUI.level2Button.y + 13, 25, DARKPURPLE);
-	}
-    if (gameData.level >= 3)
-    {
-        DrawRectangleRec(levelSelectionUI.level3Button, LIGHTGRAY);
-        DrawText("Level 3", levelSelectionUI.level3Button.x + 60, levelSelectionUI.level3Button.y + 13, 25, DARKPURPLE);
-    }
-    if (gameData.level >= 4)
-    {
-        DrawRectangleRec(levelSelectionUI.level4Button, LIGHTGRAY);
-        DrawText("Level 4", levelSelectionUI.level4Button.x + 60, levelSelectionUI.level4Button.y + 13, 25, DARKPURPLE);
-    }
-    if (gameData.level >= 5)
-    {
-        DrawRectangleRec(levelSelectionUI.level5Button, LIGHTGRAY);
-        DrawText("Level 5", levelSelectionUI.level5Button.x + 60, levelSelectionUI.level5Button.y + 13, 25, DARKPURPLE);
-	}
-
-    // Baþlýklarýn çizilmesi
+    // Drawing labels
     DrawText("Level Selection", SCREEN_WIDTH / 8, SCREEN_HEIGHT / 10, 80, DARKPURPLE);
-    DrawText("Select a level to play!", SCREEN_WIDTH / 4+30, SCREEN_HEIGHT / 5, 30, DARKPURPLE);
-	
-    // Oyun seviyesinin seçilmesi
-    Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    DrawText("Select a level to play!", SCREEN_WIDTH / 4 + 30, SCREEN_HEIGHT / 5, 30, DARKPURPLE);
+
+    // Drawing buttons and their labels
+    char levelNum[32] = {0};
+    int tempLevel = 1;
+    for (int i = 0; i <= 4; i++)
     {
-        if (CheckCollisionPointRec(mousePos, levelSelectionUI.level1Button) && gameData.level >= 1)
-        {
-            if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-            gameStats.targetScore = levelSelectionUI.level1TargetScore;
-            printf("!!! Target Score is set to Level 1's target score.\n");
-            gameState = PLAYING;
-		}
-        if (CheckCollisionPointRec(mousePos, levelSelectionUI.level2Button) && gameData.level >= 2)
-        {
-            if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-            gameStats.targetScore = levelSelectionUI.level2TargetScore;
-            printf("!!! Target Score is set to Level 2's target score.\n");
-            gameState = PLAYING;
-        }
-        if (CheckCollisionPointRec(mousePos, levelSelectionUI.level3Button) && gameData.level >= 3)
-        {
-            if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-            gameStats.targetScore = levelSelectionUI.level3TargetScore;
-            printf("!!! Target Score is set to Level 3's target score.\n");
-            gameState = PLAYING;
-        }
-        if (CheckCollisionPointRec(mousePos, levelSelectionUI.level4Button) && gameData.level >= 4)
-        {
-            if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-            gameStats.targetScore = levelSelectionUI.level4TargetScore;
-            printf("!!! Target Score is set to Level 4's target score.\n");
-            gameState = PLAYING;
-        }
-        if (CheckCollisionPointRec(mousePos, levelSelectionUI.level5Button) && gameData.level >= 5)
-        {
-            if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-            gameStats.targetScore = levelSelectionUI.level5TargetScore;
-            printf("!!! Target Score is set to Level 5's target score.\n");
-            gameState = PLAYING;
-        }
-	}
+        DrawRectangleRec(level.LevelButton[i], LIGHTGRAY);
+        snprintf(levelNum, sizeof(levelNum), "Level %d", tempLevel);
+        DrawText(levelNum, level.LevelButton[i].x + 60, level.LevelButton[i].y + 13, 25, DARKPURPLE);
+        tempLevel += 1;
+    }
+
+    // Button controls
+    for (int i = 0; i <= 4; i++)
+    {
+        ButtonClick(level.LevelButton[i], 2, 0, 0, i);
+    }
 }
 
 void UpdateGameplay()
 {
-	// Arkaplan müziðinin çalýnmasý
-    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
-
-	// Arka planýn çizilmesi
+    UpdateMusic();
     ClearBackground(RAYWHITE);
-
-    // Sürükleme mekanizmasý
-    Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        if (mousePos.y >= UI_HEIGHT) {
-            dragStartX = mousePos.x / CELL_SIZE;
-            dragStartY = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
-        }
-    }
-    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-        if (dragStartX != -1 && dragStartY != -1) {
-            int dropX = mousePos.x / CELL_SIZE;
-            int dropY = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
-
-            // Komþuluk kontrolü
-            if ((abs(dragStartX - dropX) == 1 && dragStartY == dropY) ||
-                (abs(dragStartY - dropY) == 1 && dragStartX == dropX)) {
-
-                // Þekerleri deðiþtir
-                int temp = grid[dragStartY][dragStartX];
-                grid[dragStartY][dragStartX] = grid[dropY][dropX];
-                grid[dropY][dropX] = temp;
-                gameStats.movesLeft--;
-                if (soundState == SOUND_ON) PlaySound(soundEffects.swapSound);
-            }
-
-            // Temizle
-            dragStartX = dragStartY = -1;
-        }
-    }
-
-
-    // Üst bilgi çubuðu
-    char info[128];
-    snprintf(info, sizeof(info), "Points: %d / %d    Moves Left: %d", gameStats.score, gameStats.targetScore, gameStats.movesLeft);
-    DrawText(info, 125, 20, 30, DARKPURPLE);
-
-    // Oyun tahtasýnýn çizilmesi
-    for (int y = 0; y < GRID_HEIGHT; y++) {
-        for (int x = 0; x < GRID_WIDTH; x++) {
-            Rectangle cell = { x * CELL_SIZE, y * CELL_SIZE + UI_HEIGHT, CELL_SIZE, CELL_SIZE };
-            Texture2D tex = candyTextures[grid[y][x]];
-            Rectangle source = { 0, 0, (float)tex.width, (float)tex.height };
-            Rectangle dest = { x * CELL_SIZE, y * CELL_SIZE + UI_HEIGHT, CELL_SIZE, CELL_SIZE };
-            Vector2 origin = { 0, 0 };
-
-            DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
-            DrawRectangleLinesEx(cell, 1, DARKPURPLE);
-        }
-    }
-
-	// Eþleþmeleri kontrol etme
+    UpdateInGameUI();
+    UpdateGrid();
+    Dragging();
 	CheckMatches();
-
-	// Sonuç kontrolü
-    if (gameStats.score >= gameStats.targetScore)
-    {
-        winState = WIN;
-		if (soundState == SOUND_ON) PlaySound(soundEffects.winSound);
-    }
-    else if (gameStats.movesLeft <= 0)
-    {
-        winState = LOSE;
-        if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
-    }
+    UpdateResult();
 }
 
 void CheckMatches()
@@ -562,109 +392,62 @@ void DropCandies() {
 
 void UpdateAfterGame()
 {
-    Vector2 mousePos = GetMousePosition();
-    // Oyun kazanýldýysa
     if (winState == WIN)
     {
-		// Arka planýn çizilmesi
         ClearBackground(DARKGREEN);
 
-		// Butonun çizilmesi
+        // Drawing buttons
         DrawRectangleRec(afterGameUI.menuButton, LIGHTGRAY);
 
-		// Baþlýklarýn çizilmesi
-        DrawText("YOU WIN!", SCREEN_WIDTH / 5+15, SCREEN_HEIGHT / 5, 100, RAYWHITE);
-        DrawText(" Return to the main menu", afterGameUI.menuButton.x+5, afterGameUI.menuButton.y+33, 30, DARKPURPLE);
-
-        if (gameData.level < 5)
+        // Son seviye de bittiyse, sýradaki seviye butonunu gösterme
+        if (gameStats.level <= 5)
         {
             DrawRectangleRec(afterGameUI.nextLevelButton, DARKPURPLE);
             DrawText("Next Level!", afterGameUI.nextLevelButton.x + 57, afterGameUI.nextLevelButton.y + 22, 28, LIGHTGRAY);
         }
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-        {
-            if (CheckCollisionPointRec(mousePos, afterGameUI.menuButton))
-            {
-                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-                // Seviyeyi arttýrma
-                gameData.level += 1;
-                printf("!!! Player reached level %d\n", gameData.level);
-                gameState = BEFOREPLAY;
-            }
-            if (CheckCollisionPointRec(mousePos, afterGameUI.nextLevelButton))
-            {
-                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
+        // Drawing labels
+        DrawText("YOU WIN!", SCREEN_WIDTH / 5 + 15, SCREEN_HEIGHT / 5, 100, RAYWHITE);
+        DrawText(" Return to the main menu", afterGameUI.menuButton.x + 5, afterGameUI.menuButton.y + 33, 30, DARKPURPLE);
 
-                // Seviyeyi arttýrma
-                gameData.level += 1;
-                printf("!!! Player reached level %d\n", gameData.level);
-                switch (gameData.level)
-                {
-                case 1:
-                    gameStats.targetScore = levelSelectionUI.level1TargetScore;
-                    printf("!!! Target Score is set to Level 1's target score.\n");
-                    break;
-                case 2:
-                    gameStats.targetScore = levelSelectionUI.level2TargetScore;
-                    printf("!!! Target Score is set to Level 2's target score.\n");
-                    break;
-                case 3:
-                    gameStats.targetScore = levelSelectionUI.level3TargetScore;
-                    printf("!!! Target Score is set to Level 3's target score.\n");
-                    break;
-                case 4:
-                    gameStats.targetScore = levelSelectionUI.level4TargetScore;
-                    printf("!!! Target Score is set to Level 4's target score.\n");
-                    break;
-                case 5:
-                    gameStats.targetScore = levelSelectionUI.level5TargetScore;
-                    printf("!!! Target Score is set to Level 5's target score.\n");
-                    break;
-                }
-                gameState = PLAYING;
-            }
+        // Button controls
+        ButtonClick(afterGameUI.menuButton, 0, 0, 0, -1);
+        switch (gameStats.level)
+        {
+        case 1:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0);
+            break;
+        case 2:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 1);
+            break;
+        case 3:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 2);
+            break;
+        case 4:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 3);
+            break;
+        case 5:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 4);
+            break;
         }
     }
-
-	// Oyun kaybedildiyse
     else if (winState == LOSE)
     {
-		// Arka planýn çizilmesi
 		ClearBackground(RED);
 
-		// Butonlarýn çizilmesi
+		// Drawing buttons
         DrawRectangleRec(afterGameUI.menuButton, LIGHTGRAY);
         DrawRectangleRec(afterGameUI.restartButton, DARKPURPLE);
 
-		// Baþlýklarýn çizilmesi
+		// Drawing labels
         DrawText("GAME OVER!", SCREEN_WIDTH / 8 - 10, SCREEN_HEIGHT / 5, 100, RAYWHITE);
-        DrawText(" Return to the main menu", afterGameUI.menuButton.x+5, afterGameUI.menuButton.y+33, 30, DARKPURPLE);
+        DrawText("Return to the main menu", afterGameUI.menuButton.x+5, afterGameUI.menuButton.y+33, 30, DARKPURPLE);
         DrawText("Try again!", afterGameUI.restartButton.x+57, afterGameUI.restartButton.y+22, 28, LIGHTGRAY);
 
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-        {
-            if (CheckCollisionPointRec(mousePos, afterGameUI.menuButton))
-            {
-                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-                gameState = BEFOREPLAY;
-            }
-            if (CheckCollisionPointRec(mousePos, afterGameUI.restartButton))
-            {
-                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-                gameState = PLAYING;
-            }
-        }
+        // Button controls
+        ButtonClick(afterGameUI.menuButton, 0, 0, 0, -1);
+        ButtonClick(afterGameUI.restartButton, 2, 0, 0, -1);
     }
-
-	// Oyun sonrasý skorlarýn sýfýrlanmasý
-    ResetGameStats();    
-    }
-
-void ResetGameStats()
-{
-	gameStats.score = 0;
-    gameStats.movesLeft = 20;;
 }
 
 void Unload()
@@ -683,4 +466,121 @@ void Unload()
 	UnloadSound(soundEffects.winSound);
 	UnloadSound(soundEffects.loseSound);
     UnloadMusicStream(soundEffects.music);
+}
+
+void ButtonClick(Rectangle button, int state, bool musicControl, bool soundControl, int targetS)
+{
+    Vector2 mousePos = GetMousePosition();
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    {
+        if (CheckCollisionPointRec(mousePos, button))
+        {
+            if (musicControl)
+            {
+                if (musicState == MUSIC_ON) musicState = MUSIC_OFF;
+                else if (musicState == MUSIC_OFF) musicState = MUSIC_ON;
+            }
+            if (soundControl)
+            {
+                if (soundState == SOUND_ON) soundState = SOUND_OFF;
+                else if (soundState == SOUND_OFF) soundState = SOUND_ON;
+            }
+            if (targetS < gameStats.level)
+            {
+                if (targetS != -1)
+                {
+                    gameStats.targetScore = level.TargetScore[targetS];
+                    
+                }
+                gameState = state;
+                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
+
+                // Resetting stats
+                gameStats.score = 0;
+                gameStats.movesLeft = 20;
+            }
+            else if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
+        }
+    }
+}
+
+void UpdateMusic(void)
+{
+    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
+}
+
+void Dragging()
+{
+    Vector2 mousePos = GetMousePosition();
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (mousePos.y >= UI_HEIGHT) {
+            dragStartX = mousePos.x / CELL_SIZE;
+            dragStartY = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
+        }
+    }
+    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+        if (dragStartX != -1 && dragStartY != -1) {
+            int dropX = mousePos.x / CELL_SIZE;
+            int dropY = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
+
+            // Komþuluk kontrolü
+            if ((abs(dragStartX - dropX) == 1 && dragStartY == dropY) ||
+                (abs(dragStartY - dropY) == 1 && dragStartX == dropX)) {
+
+                // Þekerleri deðiþtir
+                int temp = grid[dragStartY][dragStartX];
+                grid[dragStartY][dragStartX] = grid[dropY][dropX];
+                grid[dropY][dropX] = temp;
+                gameStats.movesLeft--;
+                if (soundState == SOUND_ON) PlaySound(soundEffects.swapSound);
+            }
+
+            // Temizle
+            dragStartX = dragStartY = -1;
+        }
+    }
+}
+
+void UpdateInGameUI()
+{
+    char info[128];
+    snprintf(info, sizeof(info), "Points: %d / %d    Moves Left: %d", gameStats.score, gameStats.targetScore, gameStats.movesLeft);
+    DrawText(info, 125, 20, 30, DARKPURPLE);
+}
+
+void UpdateGrid()
+{
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            Rectangle cell = { x * CELL_SIZE, y * CELL_SIZE + UI_HEIGHT, CELL_SIZE, CELL_SIZE };
+            Texture2D tex = candyTextures[grid[y][x]];
+            Rectangle source = { 0, 0, (float)tex.width, (float)tex.height };
+            Rectangle dest = { x * CELL_SIZE, y * CELL_SIZE + UI_HEIGHT, CELL_SIZE, CELL_SIZE };
+            Vector2 origin = { 0, 0 };
+
+            DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
+            DrawRectangleLinesEx(cell, 1, DARKPURPLE);
+        }
+    }
+}
+
+void UpdateResult()
+{
+    // Sonuç kontrolü
+    if (gameStats.score >= gameStats.targetScore)
+    {
+        winState = WIN;
+        if (soundState == SOUND_ON) PlaySound(soundEffects.winSound);
+        gameStats.level += 1;
+    }
+    else if (gameStats.movesLeft <= 0)
+    {
+        winState = LOSE;
+        if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
+    }
+    // Skora göre oyunu bitirme kontrolü
+    if (gameStats.movesLeft <= 0 || gameStats.score >= gameStats.targetScore)
+    {
+        gameState = AFTERPLAY;
+    }
 }
