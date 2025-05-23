@@ -222,7 +222,7 @@ void InitAndLoad()
     // If there are any data in the file
     // 
     // Initializing level, score and moves left
-    gameStats.level = 4;
+    gameStats.level = 1;
     gameStats.score = 0;
     gameStats.movesLeft = 20;
     // Initializing target scores for each level
