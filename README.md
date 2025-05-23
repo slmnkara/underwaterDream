@@ -1,14 +1,7 @@
 **To-do List:**
-- [x] Background image, arrangement of buttons and labels, writing the missing labels
-- [x] Scores are not working correctly, when losing, should restart from the beginning, when winning, return to the main menu.
-- [x] Swapping between menus should be fixed
-- [x] Add drag mechanics
-- [x] Main menu music, button sound, swap sound, explosion sound
-- [x] Levels
-- [ ] Dosyalama işlemiyle oyuncunun kaçıncı seviyede olduğu belli olmalı.
-- [ ] Sıfırlama tuşu olmalı, oyuncu kayıtları silebilmeli.
-- [ ] Oyunu oynarken ana menüye dönme şansı verilmeli ve kaçıncı seviyede olduğu görülmeli
-- [ ] Animasyonlar
+- [ ] Dosyalama işlemiyle oyuncunun kaçıncı seviyede olduğu belli olmalı. Sıfırlama tuşu olmalı, oyuncu kayıtları silebilmeli.
+- [ ] Oyunu oynarken: Ana menüye dönme butonu, ses-müzik kontrol butonu ve oynanan levelin numarası olmalı
+- [ ] Kodları güzelleştir, sadeleştir. Gerekmeyen parametreleri ortadan kaldır (getframetime)
 
 **Summary (Abstract / Executive Summary):** A brief description summarizing the project.
 
