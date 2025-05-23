@@ -3,31 +3,63 @@
 #include "time.h"
 #include "stdlib.h"
 
-// Tahta boyutu, hücre boyutlarý ve ekran boyutlarý
+// Initializing grid, cell, in game ui and screen sizes
 #define GRID_WIDTH 8
 #define GRID_HEIGHT 8
 #define CELL_SIZE 100
-#define UI_HEIGHT 60
+#define IN_GAME_UI_HEIGHT 60
 #define SCREEN_WIDTH (GRID_WIDTH * CELL_SIZE)
-#define SCREEN_HEIGHT ((GRID_HEIGHT * CELL_SIZE) + UI_HEIGHT)
+#define SCREEN_HEIGHT ((GRID_HEIGHT * CELL_SIZE) + IN_GAME_UI_HEIGHT)
 
-// Þeker türleri ve tanýmlanmasý
+// Initializing animation durations
+#define EXPLOSION_ANIMATION_DURATION 1.0f
+#define SWAP_ANIMATION_DURATION 0.5f
+#define MAX_EXPLOSIONS 64
+
+// Initializing candy types
 #define CANDY_TYPES 5
 Texture2D candyTextures[CANDY_TYPES];
 
-// Oyun tahtasý tanýmlanmasý
+// Initializing grid size
 int grid[GRID_HEIGHT][GRID_WIDTH];
 
-// Sürükleme baþlangýç koordinatlarý
-int dragStartX = -1, dragStartY = -1;
+// For animations
+typedef struct
+{
+    int swapActive;
+    int swapX1, swapY1, swapX2, swapY2;
+    float swapProgress;
+} SwapAnim; SwapAnim swapAnim;
+typedef struct {
+    int x, y;
+    int active;
+    float explosionProgress;
+    int candyType;
+} ExplosionAnim; ExplosionAnim explosions[MAX_EXPLOSIONS];
+float visualY[GRID_HEIGHT][GRID_WIDTH];
+float visualX[GRID_HEIGHT][GRID_WIDTH];
 
-// Oyun durumlarý ve ses ayarlarý
-typedef enum { BEFOREPLAY, LEVELSELECTION, PLAYING, AFTERPLAY } GameState; GameState gameState = 0;
-typedef enum { WIN, LOSE } WinState; WinState winState = LOSE;
-typedef enum { MUSIC_ON, MUSIC_OFF } MusicState; MusicState musicState = MUSIC_ON;
-typedef enum { SOUND_ON, SOUND_OFF } SoundState; SoundState soundState = SOUND_ON;
+// For UI components
+typedef struct
+{
+    Rectangle playButton;
+    Rectangle musicButton;
+    Rectangle soundButton;
+    Texture2D wallpaper;
+} MenuUI; MenuUI menuUI;
+typedef struct
+{
+    Rectangle LevelButton[5];
+    int TargetScore[5];
+} LevelUI; LevelUI levelUI;
+typedef struct
+{
+    Rectangle restartButton;
+    Rectangle menuButton;
+    Rectangle nextLevelButton;
+} AfterGameUI; AfterGameUI afterGameUI;
 
-// Oyun istatistikleri bileþenleri
+// For statistics
 typedef struct
 {
     int level;
@@ -36,31 +68,7 @@ typedef struct
     int movesLeft;
 } GameStats; GameStats gameStats;
 
-// Anamenü bileþenleri
-typedef struct
-{
-    Rectangle playButton;
-    Rectangle musicButton;
-    Rectangle soundButton;
-    Texture2D wallpaper;
-} MenuUI; MenuUI menuUI;
-
-// Oyun sonrasý menüsü bileþenleri
-typedef struct
-{
-    Rectangle restartButton;
-    Rectangle menuButton;
-    Rectangle nextLevelButton;
-} AfterGameUI; AfterGameUI afterGameUI;
-
-// Seviye seçimi bileþenleri
-typedef struct
-{
-    Rectangle LevelButton[5];
-    int TargetScore[5];
-} Level; Level level;
-
-// Ses efektleri bileþenleri
+// For music and sound effects
 typedef struct
 {
     Music music;
@@ -71,37 +79,47 @@ typedef struct
     Sound loseSound;
 } SoundEffects; SoundEffects soundEffects;
 
+// For dragging
+typedef struct
+{
+    int dragStartX;
+	int dragStartY;
+} Drag; Drag drag;
+
+// For game states and music/sound states
+typedef enum { BEFOREPLAY, LEVELSELECTION, PLAYING, AFTERPLAY } GameState; GameState gameState = 0;
+typedef enum { WIN, LOSE } WinState; WinState winState = LOSE;
+typedef enum { MUSIC_ON, MUSIC_OFF } MusicState; MusicState musicState = MUSIC_ON;
+typedef enum { SOUND_ON, SOUND_OFF } SoundState; SoundState soundState = SOUND_ON;
+
 // Function prototypes
 void InitAndLoad();
+void UpdateMusic();
+void ButtonClick(Rectangle, int, bool, bool, int);
 void UpdateMenu();
 void UpdateLevelSelection();
 void UpdateGameplay();
-void CheckMatches();
-void DropCandies();
-void UpdateAfterGame();
-void Unload();
-void ButtonClick(Rectangle, int, bool, bool, int);
-void Dragging();
-void UpdateMusic();
 void UpdateInGameUI();
 void UpdateGrid();
+void Dragging();
+void CheckMatches();
+void DropCandies();
 void UpdateResult();
+void StartExplosion(int x, int y, int candyType);
+void UpdateExplosion(float delta);
+void UpdateAfterGame();
+void UpdateSwap();
+void Unload(); // Kaynaklarý serbest býrakma
 
 int main(void)
 {
-    SetTargetFPS(60);
 	InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Underwater Dream");
 	InitAudioDevice();
-
-	// Initializing requirements and loading textures
-    InitAndLoad();
-
+    InitAndLoad(); // Initializing requirements and loading textures
     while (!WindowShouldClose())
     {
 		BeginDrawing();
-
-        // Updating the screen depending on gameState
-        switch (gameState)
+        switch (gameState) // Updating the screen depending on gameState
         {
         case BEFOREPLAY:
             UpdateMenu();
@@ -118,9 +136,7 @@ int main(void)
         }
         EndDrawing();
 	}
-	// Oyun döngüsü sona erdiðinde kaynaklarý serbest býrakma
-	Unload();
-
+	Unload(); // Releasing resources when the game ends
 	CloseAudioDevice();
     CloseWindow();
     return 0;
@@ -135,11 +151,11 @@ void InitAndLoad()
     menuUI.soundButton = (Rectangle){ 325,490,150,50 };
     menuUI.wallpaper = LoadTexture("assets/images/wallpaper.png");
     // levelUI
-    level.LevelButton[0] = (Rectangle){ 300, 275, 200, 50 };
-    level.LevelButton[1] = (Rectangle){ 300, 375, 200, 50 };
-    level.LevelButton[2] = (Rectangle){ 300, 475, 200, 50 };
-    level.LevelButton[3] = (Rectangle){ 300, 575, 200, 50 };
-    level.LevelButton[4] = (Rectangle){ 300, 675, 200, 50 };
+    levelUI.LevelButton[0] = (Rectangle){ 300, 275, 200, 50 };
+    levelUI.LevelButton[1] = (Rectangle){ 300, 375, 200, 50 };
+    levelUI.LevelButton[2] = (Rectangle){ 300, 475, 200, 50 };
+    levelUI.LevelButton[3] = (Rectangle){ 300, 575, 200, 50 };
+    levelUI.LevelButton[4] = (Rectangle){ 300, 675, 200, 50 };
     // gameUI
     candyTextures[0] = LoadTexture("assets/images/image1.png");
     candyTextures[1] = LoadTexture("assets/images/image2.png");
@@ -155,7 +171,8 @@ void InitAndLoad()
     // Background music
     soundEffects.music = LoadMusicStream("assets/soundEffects/music.mp3");
     PlayMusicStream(soundEffects.music);
-    SetMusicVolume(soundEffects.music, 0.2f);
+    SetMusicVolume(soundEffects.music, 0.1f);
+    
     // Sound Effects
     soundEffects.buttonClick = LoadSound("assets/soundEffects/button.mp3");
     soundEffects.swapSound = LoadSound("assets/soundEffects/swap.mp3");
@@ -179,7 +196,7 @@ void InitAndLoad()
     int tempScore = 1000;
     for (int n = 0; n <= 4; n++)
     {
-        level.TargetScore[n] = tempScore;
+        levelUI.TargetScore[n] = tempScore;
         tempScore += 250;
     }
 
@@ -199,12 +216,66 @@ void InitAndLoad()
             grid[y][x] = candy;
         }
     }
+
+    // For animations
+    drag.dragStartX = -1;
+    drag.dragStartY = -1;
+    swapAnim.swapActive = 0;
+    swapAnim.swapProgress = 0.0f;
+    for (int y = 0; y < GRID_HEIGHT; y++)
+    {
+        for (int x = 0; x < GRID_WIDTH; x++)
+        {
+            visualY[y][x] = (float)y;
+            visualX[y][x] = (float)x;
+        }
+    }
+}
+
+void UpdateMusic(void)
+{
+    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
+}
+
+void ButtonClick(Rectangle button, int state, bool musicControl, bool soundControl, int targetS)
+{
+    Vector2 mousePos = GetMousePosition();
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    {
+        if (CheckCollisionPointRec(mousePos, button))
+        {
+            if (musicControl)
+            {
+                if (musicState == MUSIC_ON) musicState = MUSIC_OFF;
+                else if (musicState == MUSIC_OFF) musicState = MUSIC_ON;
+            }
+            if (soundControl)
+            {
+                if (soundState == SOUND_ON) soundState = SOUND_OFF;
+                else if (soundState == SOUND_OFF) soundState = SOUND_ON;
+            }
+            if (targetS < gameStats.level)
+            {
+                if (targetS != -1)
+                {
+                    gameStats.targetScore = levelUI.TargetScore[targetS];
+
+                }
+                gameState = state;
+                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
+
+                // Resetting stats
+                gameStats.score = 0;
+                gameStats.movesLeft = 20;
+            }
+            else if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
+        }
+    }
 }
 
 void UpdateMenu()
 {
     UpdateMusic();
-
     // Drawing wallpaper, buttons and labels for main menu.
     DrawTexture(menuUI.wallpaper, 0, 0, WHITE);
     DrawRectangleRec(menuUI.playButton, DARKPURPLE);
@@ -215,13 +286,11 @@ void UpdateMenu()
     DrawText("Start!", menuUI.playButton.x+65, menuUI.playButton.y+15, 25, WHITE);
     DrawText("Music", menuUI.musicButton.x+20, menuUI.musicButton.y+17, 18, WHITE);
     DrawText("Sound", menuUI.soundButton.x+20, menuUI.soundButton.y+17, 18, WHITE);
-
     // Control of ON-OFF labels
     if (musicState == MUSIC_ON) DrawText("ON", menuUI.musicButton.x + 100, menuUI.musicButton.y + 17, 18, GREEN);
     else DrawText("OFF", menuUI.musicButton.x + 100, menuUI.musicButton.y + 17, 18, RED);
     if (soundState == SOUND_ON) DrawText("ON", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, GREEN);
     else DrawText("OFF", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, RED);
-
     // Control of buttons
     ButtonClick(menuUI.playButton, 1, 0, 0, -1);
     ButtonClick(menuUI.musicButton, 0, 1, 0, -1);
@@ -232,26 +301,23 @@ void UpdateLevelSelection()
 {
     UpdateMusic();
     ClearBackground(RAYWHITE);
-
     // Drawing labels
     DrawText("Level Selection", SCREEN_WIDTH / 8, SCREEN_HEIGHT / 10, 80, DARKPURPLE);
     DrawText("Select a level to play!", SCREEN_WIDTH / 4 + 30, SCREEN_HEIGHT / 5, 30, DARKPURPLE);
-
     // Drawing buttons and their labels
     char levelNum[32] = {0};
     int tempLevel = 1;
     for (int i = 0; i <= 4; i++)
     {
-        DrawRectangleRec(level.LevelButton[i], LIGHTGRAY);
+        DrawRectangleRec(levelUI.LevelButton[i], LIGHTGRAY);
         snprintf(levelNum, sizeof(levelNum), "Level %d", tempLevel);
-        DrawText(levelNum, level.LevelButton[i].x + 60, level.LevelButton[i].y + 13, 25, DARKPURPLE);
+        DrawText(levelNum, levelUI.LevelButton[i].x + 60, levelUI.LevelButton[i].y + 13, 25, DARKPURPLE);
         tempLevel += 1;
     }
-
     // Button controls
     for (int i = 0; i <= 4; i++)
     {
-        ButtonClick(level.LevelButton[i], 2, 0, 0, i);
+        ButtonClick(levelUI.LevelButton[i], 2, 0, 0, i);
     }
 }
 
@@ -261,9 +327,101 @@ void UpdateGameplay()
     ClearBackground(RAYWHITE);
     UpdateInGameUI();
     UpdateGrid();
-    Dragging();
-	CheckMatches();
+    if (!swapAnim.swapActive) Dragging();
+    CheckMatches();
     UpdateResult();
+    UpdateExplosion(GetFrameTime());
+	UpdateSwap();
+}
+
+void UpdateInGameUI()
+{
+    char info[128];
+    snprintf(info, sizeof(info), "Points: %d / %d    Moves Left: %d", gameStats.score, gameStats.targetScore, gameStats.movesLeft);
+    DrawText(info, 125, 20, 30, DARKPURPLE);
+}
+
+void UpdateGrid()
+{
+    // Her karede görsel konumu güncelle
+    float fallSpeed = 5.0f * GetFrameTime(); // Hýzý ayarlayabilirsiniz
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            if (visualY[y][x] < y) {
+                visualY[y][x] += fallSpeed;
+                if (visualY[y][x] > y) visualY[y][x] = (float)y;
+            }
+            else if (visualY[y][x] > y) {
+                visualY[y][x] = (float)y; // yukarý çýkma olmasýn
+            }
+        }
+    }
+
+    // Draw normal candies
+    for (int y = 0; y < GRID_HEIGHT; y++)
+    {
+        for (int x = 0; x < GRID_WIDTH; x++)
+        {
+            Rectangle cell = { x * CELL_SIZE, y * CELL_SIZE + IN_GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE };
+            Texture2D tex = candyTextures[grid[y][x]];
+            Rectangle source = { 0, 0, (float)tex.width, (float)tex.height };
+            Rectangle dest = { visualX[y][x] * CELL_SIZE, visualY[y][x] * CELL_SIZE + IN_GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE };
+            Vector2 origin = { 0, 0 };
+            DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
+            DrawRectangleLinesEx(cell, 1, DARKPURPLE);
+        }
+    }
+
+    // Draw explosion animations
+    for (int i = 0; i < MAX_EXPLOSIONS; i++) {
+        if (explosions[i].active) {
+            float alpha = 1.0f - (explosions[i].explosionProgress / EXPLOSION_ANIMATION_DURATION); // Fade out
+            if (alpha < 0) alpha = 0;
+            int x = explosions[i].x;
+            int y = explosions[i].y;
+            Texture2D tex = candyTextures[explosions[i].candyType];
+            Rectangle source = { 0, 0, (float)tex.width, (float)tex.height };
+            Rectangle dest = { x * CELL_SIZE, y * CELL_SIZE + IN_GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE };
+            Vector2 origin = { 0, 0 };
+            Color fadeColor = WHITE;
+            fadeColor.a = (unsigned char)(255 * alpha);
+            DrawTexturePro(tex, source, dest, origin, 0.0f, fadeColor);
+        }
+    }
+}
+
+void Dragging()
+{
+    Vector2 mousePos = GetMousePosition();
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+        if (mousePos.y >= IN_GAME_UI_HEIGHT) {
+            drag.dragStartX = mousePos.x / CELL_SIZE;
+            drag.dragStartY = (mousePos.y - IN_GAME_UI_HEIGHT) / CELL_SIZE;
+        }
+    }
+    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+        if (drag.dragStartX != -1 && drag.dragStartY != -1 && !swapAnim.swapActive) {
+            int dropX = mousePos.x / CELL_SIZE;
+            int dropY = (mousePos.y - IN_GAME_UI_HEIGHT) / CELL_SIZE;
+
+            // Komþuluk kontrolü
+            if ((abs(drag.dragStartX - dropX) == 1 && drag.dragStartY == dropY) ||
+                (abs(drag.dragStartY - dropY) == 1 && drag.dragStartX == dropX)) {
+
+                // Swap animasyonunu baþlat
+                swapAnim.swapActive = 1;
+                swapAnim.swapX1 = drag.dragStartX;
+                swapAnim.swapY1 = drag.dragStartY;
+                swapAnim.swapX2 = dropX;
+                swapAnim.swapY2 = dropY;
+                swapAnim.swapProgress = 0.0f;
+                gameStats.movesLeft--;
+                if (soundState == SOUND_ON) PlaySound(soundEffects.swapSound);
+            }
+
+            drag.dragStartX = drag.dragStartY = -1;
+        }
+    }
 }
 
 void CheckMatches()
@@ -281,7 +439,10 @@ void CheckMatches()
                     candy == grid[y][x + 2] &&
                     candy == grid[y][x + 3] &&
                     candy == grid[y][x + 4]) {
-                    grid[y][x] = grid[y][x + 1] = grid[y][x + 2] = grid[y][x + 3] = grid[y][x + 4] = -1;
+                    for (int i = 0; i < 5; i++) {
+                        StartExplosion(x + i, y, grid[y][x + i]);
+                        grid[y][x + i] = -1;
+                    }
                     matchFound = true;
                     gameStats.score += 250;
                 }
@@ -292,7 +453,10 @@ void CheckMatches()
                     candy == grid[y][x + 1] &&
                     candy == grid[y][x + 2] &&
                     candy == grid[y][x + 3]) {
-                    grid[y][x] = grid[y][x + 1] = grid[y][x + 2] = grid[y][x + 3] = -1;
+                    for (int i = 0; i < 4; i++) {
+                        StartExplosion(x + i, y, grid[y][x + i]);
+                        grid[y][x + i] = -1;
+                    }
                     matchFound = true;
                     gameStats.score += 150;
                 }
@@ -302,7 +466,10 @@ void CheckMatches()
                 if (candy != -1 &&
                     candy == grid[y][x + 1] &&
                     candy == grid[y][x + 2]) {
-                    grid[y][x] = grid[y][x + 1] = grid[y][x + 2] = -1;
+                    for (int i = 0; i < 3; i++) {
+                        StartExplosion(x + i, y, grid[y][x + i]);
+                        grid[y][x + i] = -1;
+                    }
                     matchFound = true;
                     gameStats.score += 50;
                 }
@@ -318,7 +485,10 @@ void CheckMatches()
                     candy == grid[y + 2][x] &&
                     candy == grid[y + 3][x] &&
                     candy == grid[y + 4][x]) {
-                    grid[y][x] = grid[y + 1][x] = grid[y + 2][x] = grid[y + 3][x] = grid[y + 4][x] = -1;
+                    for (int i = 0; i < 5; i++) {
+                        StartExplosion(x, y + i, grid[y + i][x]);
+                        grid[y + i][x] = -1;
+                    }
                     matchFound = true;
                     gameStats.score += 250;
                 }
@@ -329,7 +499,10 @@ void CheckMatches()
                     candy == grid[y + 1][x] &&
                     candy == grid[y + 2][x] &&
                     candy == grid[y + 3][x]) {
-                    grid[y][x] = grid[y + 1][x] = grid[y + 2][x] = grid[y + 3][x] = -1;
+                    for (int i = 0; i < 4; i++) {
+                        StartExplosion(x, y + i, grid[y + i][x]);
+                        grid[y + i][x] = -1;
+                    }
                     matchFound = true;
                     gameStats.score += 150;
                 }
@@ -339,7 +512,10 @@ void CheckMatches()
                 if (candy != -1 &&
                     candy == grid[y + 1][x] &&
                     candy == grid[y + 2][x]) {
-                    grid[y][x] = grid[y + 1][x] = grid[y + 2][x] = -1;
+                    for (int i = 0; i < 3; i++) {
+                        StartExplosion(x, y + i, grid[y + i][x]);
+                        grid[y + i][x] = -1;
+                    }
                     matchFound = true;
                     gameStats.score += 50;
                 }
@@ -355,37 +531,115 @@ void CheckMatches()
 }
 
 void DropCandies() {
-    for (int x = 0; x < GRID_WIDTH; x++)
-    {
-        for (int y = GRID_HEIGHT - 1; y >= 0; y--)
-        {
-            if (grid[y][x] == -1)
-            {
-				// Üstteki þekerleri bul ve aþaðý kaydýr
-                for (int k = y - 1; k >= 0; k--)
-                {
-                    if (grid[k][x] != -1)
-                    {
-						// Þekerin yeni konumunu ayarla
+    for (int x = 0; x < GRID_WIDTH; x++) {
+        for (int y = GRID_HEIGHT - 1; y >= 0; y--) {
+            if (grid[y][x] == -1) {
+                for (int k = y - 1; k >= 0; k--) {
+                    if (grid[k][x] != -1) {
                         grid[y][x] = grid[k][x];
                         grid[k][x] = -1;
+                        visualY[y][x] = visualY[k][x]; // Görsel konumu da taþý
+                        visualX[y][x] = (float)x;
                         break;
                     }
                 }
             }
         }
     }
-
-	// Yeni þekerleri rastgele oluþtur
-    for (int y = 0; y < GRID_HEIGHT; y++)
-    {
-        for (int x = 0; x < GRID_WIDTH; x++)
-        {
-			// Eðer hücre boþsa, yeni bir þeker oluþtur
-            if (grid[y][x] == -1)
-            {
+    // Yeni þekerler için
+    for (int y = 0; y < GRID_HEIGHT; y++) {
+        for (int x = 0; x < GRID_WIDTH; x++) {
+            if (grid[y][x] == -1) {
                 grid[y][x] = GetRandomValue(0, CANDY_TYPES - 1);
+                visualY[y][x] = -1.5f; // Ekran dýþýndan baþlasýn
+                visualX[y][x] = (float)x;
             }
+        }
+    }
+}
+
+void UpdateResult()
+{
+    // Sonuç kontrolü
+    if (gameStats.score >= gameStats.targetScore)
+    {
+        winState = WIN;
+        if (soundState == SOUND_ON) PlaySound(soundEffects.winSound);
+        gameStats.level += 1;
+    }
+    else if (gameStats.movesLeft <= 0)
+    {
+        winState = LOSE;
+        if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
+    }
+    // Skora göre oyunu bitirme kontrolü
+    if (gameStats.movesLeft <= 0 || gameStats.score >= gameStats.targetScore)
+    {
+        gameState = AFTERPLAY;
+    }
+}
+
+void StartExplosion(int x, int y, int candyType)
+{
+    for (int i = 0; i < MAX_EXPLOSIONS; i++)
+    {
+        if (!explosions[i].active)
+        {
+            explosions[i].x = x;
+            explosions[i].y = y;
+            explosions[i].candyType = candyType;
+            explosions[i].explosionProgress = 0.0f;
+            explosions[i].active = 1;
+            break;
+        }
+    }
+}
+
+void UpdateExplosion(float delta)
+{
+    for (int i = 0; i < MAX_EXPLOSIONS; i++)
+    {
+        if (explosions[i].active)
+        {
+            explosions[i].explosionProgress += delta;
+            if (explosions[i].explosionProgress >= EXPLOSION_ANIMATION_DURATION)
+            {
+                explosions[i].active = 0;
+            }
+        }
+    }
+}
+
+void UpdateSwap()
+{
+    // Swap animasyonu güncelle
+    if (swapAnim.swapActive) {
+        float delta = GetFrameTime();
+        swapAnim.swapProgress += delta / SWAP_ANIMATION_DURATION;
+        if (swapAnim.swapProgress >= 1.0f) {
+            // Swap iþlemini grid'de uygula
+            int temp = grid[swapAnim.swapY1][swapAnim.swapX1];
+            grid[swapAnim.swapY1][swapAnim.swapX1] = grid[swapAnim.swapY2][swapAnim.swapX2];
+            grid[swapAnim.swapY2][swapAnim.swapX2] = temp;
+
+            // Görsel konumlarý da güncelle
+            float tempX = visualX[swapAnim.swapY1][swapAnim.swapX1];
+            float tempY = visualY[swapAnim.swapY1][swapAnim.swapX1];
+            visualX[swapAnim.swapY1][swapAnim.swapX1] = visualX[swapAnim.swapY2][swapAnim.swapX2];
+            visualY[swapAnim.swapY1][swapAnim.swapX1] = visualY[swapAnim.swapY2][swapAnim.swapX2];
+            visualX[swapAnim.swapY2][swapAnim.swapX2] = tempX;
+            visualY[swapAnim.swapY2][swapAnim.swapX2] = tempY;
+
+            swapAnim.swapActive = 0;
+            swapAnim.swapProgress = 0.0f;
+        }
+        else {
+            // Görsel konumlarý ara pozisyona taþý
+            float t = swapAnim.swapProgress;
+            visualX[swapAnim.swapY1][swapAnim.swapX1] = (1 - t) * swapAnim.swapX1 + t * swapAnim.swapX2;
+            visualY[swapAnim.swapY1][swapAnim.swapX1] = (1 - t) * swapAnim.swapY1 + t * swapAnim.swapY2;
+            visualX[swapAnim.swapY2][swapAnim.swapX2] = (1 - t) * swapAnim.swapX2 + t * swapAnim.swapX1;
+            visualY[swapAnim.swapY2][swapAnim.swapX2] = (1 - t) * swapAnim.swapY2 + t * swapAnim.swapY1;
         }
     }
 }
@@ -403,12 +657,12 @@ void UpdateAfterGame()
         if (gameStats.level <= 5)
         {
             DrawRectangleRec(afterGameUI.nextLevelButton, DARKPURPLE);
-            DrawText("Next Level!", afterGameUI.nextLevelButton.x + 57, afterGameUI.nextLevelButton.y + 22, 28, LIGHTGRAY);
+            DrawText("Next Level!", afterGameUI.nextLevelButton.x + 53, afterGameUI.nextLevelButton.y + 22, 28, LIGHTGRAY);
         }
 
         // Drawing labels
         DrawText("YOU WIN!", SCREEN_WIDTH / 5 + 15, SCREEN_HEIGHT / 5, 100, RAYWHITE);
-        DrawText(" Return to the main menu", afterGameUI.menuButton.x + 5, afterGameUI.menuButton.y + 33, 30, DARKPURPLE);
+        DrawText("Return to the main menu", afterGameUI.menuButton.x + 17, afterGameUI.menuButton.y + 33, 30, DARKPURPLE);
 
         // Button controls
         ButtonClick(afterGameUI.menuButton, 0, 0, 0, -1);
@@ -441,7 +695,7 @@ void UpdateAfterGame()
 
 		// Drawing labels
         DrawText("GAME OVER!", SCREEN_WIDTH / 8 - 10, SCREEN_HEIGHT / 5, 100, RAYWHITE);
-        DrawText("Return to the main menu", afterGameUI.menuButton.x+5, afterGameUI.menuButton.y+33, 30, DARKPURPLE);
+        DrawText("Return to the main menu", afterGameUI.menuButton.x+17, afterGameUI.menuButton.y+33, 30, DARKPURPLE);
         DrawText("Try again!", afterGameUI.restartButton.x+57, afterGameUI.restartButton.y+22, 28, LIGHTGRAY);
 
         // Button controls
@@ -452,7 +706,6 @@ void UpdateAfterGame()
 
 void Unload()
 {
-	// Kaynaklarý serbest býrakma
     UnloadTexture(menuUI.wallpaper);
 
     for (int i = 0; i < CANDY_TYPES; i++)
@@ -466,121 +719,4 @@ void Unload()
 	UnloadSound(soundEffects.winSound);
 	UnloadSound(soundEffects.loseSound);
     UnloadMusicStream(soundEffects.music);
-}
-
-void ButtonClick(Rectangle button, int state, bool musicControl, bool soundControl, int targetS)
-{
-    Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    {
-        if (CheckCollisionPointRec(mousePos, button))
-        {
-            if (musicControl)
-            {
-                if (musicState == MUSIC_ON) musicState = MUSIC_OFF;
-                else if (musicState == MUSIC_OFF) musicState = MUSIC_ON;
-            }
-            if (soundControl)
-            {
-                if (soundState == SOUND_ON) soundState = SOUND_OFF;
-                else if (soundState == SOUND_OFF) soundState = SOUND_ON;
-            }
-            if (targetS < gameStats.level)
-            {
-                if (targetS != -1)
-                {
-                    gameStats.targetScore = level.TargetScore[targetS];
-                    
-                }
-                gameState = state;
-                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-
-                // Resetting stats
-                gameStats.score = 0;
-                gameStats.movesLeft = 20;
-            }
-            else if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
-        }
-    }
-}
-
-void UpdateMusic(void)
-{
-    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
-}
-
-void Dragging()
-{
-    Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        if (mousePos.y >= UI_HEIGHT) {
-            dragStartX = mousePos.x / CELL_SIZE;
-            dragStartY = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
-        }
-    }
-    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-        if (dragStartX != -1 && dragStartY != -1) {
-            int dropX = mousePos.x / CELL_SIZE;
-            int dropY = (mousePos.y - UI_HEIGHT) / CELL_SIZE;
-
-            // Komþuluk kontrolü
-            if ((abs(dragStartX - dropX) == 1 && dragStartY == dropY) ||
-                (abs(dragStartY - dropY) == 1 && dragStartX == dropX)) {
-
-                // Þekerleri deðiþtir
-                int temp = grid[dragStartY][dragStartX];
-                grid[dragStartY][dragStartX] = grid[dropY][dropX];
-                grid[dropY][dropX] = temp;
-                gameStats.movesLeft--;
-                if (soundState == SOUND_ON) PlaySound(soundEffects.swapSound);
-            }
-
-            // Temizle
-            dragStartX = dragStartY = -1;
-        }
-    }
-}
-
-void UpdateInGameUI()
-{
-    char info[128];
-    snprintf(info, sizeof(info), "Points: %d / %d    Moves Left: %d", gameStats.score, gameStats.targetScore, gameStats.movesLeft);
-    DrawText(info, 125, 20, 30, DARKPURPLE);
-}
-
-void UpdateGrid()
-{
-    for (int y = 0; y < GRID_HEIGHT; y++) {
-        for (int x = 0; x < GRID_WIDTH; x++) {
-            Rectangle cell = { x * CELL_SIZE, y * CELL_SIZE + UI_HEIGHT, CELL_SIZE, CELL_SIZE };
-            Texture2D tex = candyTextures[grid[y][x]];
-            Rectangle source = { 0, 0, (float)tex.width, (float)tex.height };
-            Rectangle dest = { x * CELL_SIZE, y * CELL_SIZE + UI_HEIGHT, CELL_SIZE, CELL_SIZE };
-            Vector2 origin = { 0, 0 };
-
-            DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
-            DrawRectangleLinesEx(cell, 1, DARKPURPLE);
-        }
-    }
-}
-
-void UpdateResult()
-{
-    // Sonuç kontrolü
-    if (gameStats.score >= gameStats.targetScore)
-    {
-        winState = WIN;
-        if (soundState == SOUND_ON) PlaySound(soundEffects.winSound);
-        gameStats.level += 1;
-    }
-    else if (gameStats.movesLeft <= 0)
-    {
-        winState = LOSE;
-        if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
-    }
-    // Skora göre oyunu bitirme kontrolü
-    if (gameStats.movesLeft <= 0 || gameStats.score >= gameStats.targetScore)
-    {
-        gameState = AFTERPLAY;
-    }
 }
