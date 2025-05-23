@@ -1,7 +1,8 @@
 **To-do List:**
 - [ ] Dosyalama işlemiyle oyuncunun kaçıncı seviyede olduğu belli olmalı. Sıfırlama tuşu olmalı, oyuncu kayıtları silebilmeli. (Raylib fonksiyonlarını kullanmayı deneyebilirsin)
-- [ ] Oyunu oynarken: Ana menüye dönme butonu, ses-müzik kontrol butonu ve oynanan levelin numarası olmalı
+- [ ] Oyunu oynarken: Ana menüye dönme butonu, ses-müzik kontrol butonu ve oynanan levelin numarası olmalı. (Son seviyeyi de kazanana yönelik bir ekran tasarla)
 - [ ] Kodları güzelleştir, sadeleştir. Gerekmeyen parametreleri ortadan kaldır (getframetime)
+- [ ] Yukarıdan aşağıya inerken sürükleme animasyonunda problem yaşanıyor.
 
 **Summary (Abstract / Executive Summary):** A brief description summarizing the project.
 
