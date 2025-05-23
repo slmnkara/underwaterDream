@@ -1,5 +1,5 @@
 **To-do List:**
-- [ ] Dosyalama işlemiyle oyuncunun kaçıncı seviyede olduğu belli olmalı. Sıfırlama tuşu olmalı, oyuncu kayıtları silebilmeli.
+- [ ] Dosyalama işlemiyle oyuncunun kaçıncı seviyede olduğu belli olmalı. Sıfırlama tuşu olmalı, oyuncu kayıtları silebilmeli. (Raylib fonksiyonlarını kullanmayı deneyebilirsin)
 - [ ] Oyunu oynarken: Ana menüye dönme butonu, ses-müzik kontrol butonu ve oynanan levelin numarası olmalı
 - [ ] Kodları güzelleştir, sadeleştir. Gerekmeyen parametreleri ortadan kaldır (getframetime)
 
