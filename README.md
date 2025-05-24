@@ -1,5 +1,4 @@
 **To-do List:**
-- [ ] Dosyalama işlemiyle oyuncunun kaçıncı seviyede olduğu belli olmalı. Sıfırlama tuşu olmalı, oyuncu kayıtları silebilmeli. (Raylib fonksiyonlarını kullanmayı deneyebilirsin)
 - [ ] Kodları güzelleştir, sadeleştir. Gerekmeyen parametreleri ortadan kaldır (getframetime). Seviye mekaniğini toparla, çok dağınık çalışıyor.
 
 **Summary (Abstract / Executive Summary):** A brief description summarizing the project.
