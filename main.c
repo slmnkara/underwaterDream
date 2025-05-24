@@ -45,6 +45,7 @@ typedef struct
     Rectangle playButton;
     Rectangle musicButton;
     Rectangle soundButton;
+	Rectangle resetButton;
     Texture2D wallpaper;
 } MenuUI; MenuUI menuUI;
 
@@ -114,7 +115,7 @@ typedef enum { SOUND_ON, SOUND_OFF } SoundState; SoundState soundState = SOUND_O
 // Function prototypes
 void InitAndLoad();
 void UpdateMusic();
-void ButtonClick(Rectangle, int, bool, bool, int);
+void ButtonClick(Rectangle, int, bool, bool, bool, int);
 void UpdateMenu();
 void UpdateLevelSelection();
 void UpdateGameplay();
@@ -130,6 +131,8 @@ void UpdateSwap();
 void UpdateAfterGame();
 void UpdateCompleted();
 void Unload(); // Kaynakları serbest bırakma
+void ReadDataFromFile();
+void WriteDataToFile(int level); // Dosyadan veri okuma ve yazma
 
 int main(void)
 {
@@ -172,6 +175,7 @@ void InitAndLoad()
     menuUI.playButton = (Rectangle){ 300,300,200,50 };
     menuUI.musicButton = (Rectangle){ 325,410,150,50 };
     menuUI.soundButton = (Rectangle){ 325,490,150,50 };
+	menuUI.resetButton = (Rectangle){ 360,570,80,50 };
     menuUI.wallpaper = LoadTexture("assets/images/wallpaper.png");
     // levelUI
     levelUI.LevelButton[0] = (Rectangle){ 300, 275, 200, 50 };
@@ -220,11 +224,7 @@ void InitAndLoad()
 
         // GAMEDATA
     // If there are any data in the file
-    // 
-    // Initializing level, score and moves left
-    gameStats.level = 1;
-    gameStats.score = 0;
-    gameStats.movesLeft = 20;
+	ReadDataFromFile();
     // Initializing target scores for each level
     int tempScore = 1000;
     for (int n = 0; n <= 4; n++)
@@ -274,7 +274,7 @@ void UpdateMusic(void)
     if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
 }
 
-void ButtonClick(Rectangle button, int state, bool musicControl, bool soundControl, int targetS)
+void ButtonClick(Rectangle button, int state, bool musicControl, bool soundControl, bool resetControl, int targetS)
 {
     Vector2 mousePos = GetMousePosition();
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
@@ -290,6 +290,11 @@ void ButtonClick(Rectangle button, int state, bool musicControl, bool soundContr
             {
                 if (soundState == SOUND_ON) soundState = SOUND_OFF;
                 else if (soundState == SOUND_OFF) soundState = SOUND_ON;
+            }
+            if (resetControl)
+            {
+				WriteDataToFile(1); // Resetting level to 1
+                gameStats.level = 1;
             }
             if (targetS < gameStats.level)
             {
@@ -318,11 +323,13 @@ void UpdateMenu()
     DrawRectangleRec(menuUI.playButton, DARKPURPLE);
     DrawRectangleRec(menuUI.musicButton, DARKBLUE);
     DrawRectangleRec(menuUI.soundButton, DARKBLUE);
+	DrawRectangleRec(menuUI.resetButton, BLACK);
     DrawText("Underwater Dream", 200, 120, 42, DARKPURPLE);
     DrawText("Similar to Candy Crush Saga. Coded with Raylib.", 150, 170, 21, BLACK);
     DrawText("Start!", menuUI.playButton.x+65, menuUI.playButton.y+15, 25, WHITE);
     DrawText("Music", menuUI.musicButton.x+20, menuUI.musicButton.y+17, 18, WHITE);
     DrawText("Sound", menuUI.soundButton.x+20, menuUI.soundButton.y+17, 18, WHITE);
+	DrawText("Reset\nLevel", menuUI.resetButton.x + 13, menuUI.resetButton.y + 5, 20, WHITE);
 
     // Control of ON-OFF labels
     if (musicState == MUSIC_ON) DrawText("ON", menuUI.musicButton.x + 100, menuUI.musicButton.y + 17, 18, GREEN);
@@ -330,10 +337,15 @@ void UpdateMenu()
     if (soundState == SOUND_ON) DrawText("ON", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, GREEN);
     else DrawText("OFF", menuUI.soundButton.x + 100, menuUI.soundButton.y + 17, 18, RED);
 
+    char info[128];
+    snprintf(info, sizeof(info), "Current Level: %d", gameStats.level);
+    DrawText(info, 15, 830, 20, BLACK);
+
     // Control of buttons
-    ButtonClick(menuUI.playButton, 1, 0, 0, -1);
-    ButtonClick(menuUI.musicButton, 0, 1, 0, -1);
-    ButtonClick(menuUI.soundButton, 0, 0, 1, -1);
+    ButtonClick(menuUI.playButton, 1, 0, 0, 0, -1);
+    ButtonClick(menuUI.musicButton, 0, 1, 0, 0, -1);
+    ButtonClick(menuUI.soundButton, 0, 0, 1, 0, -1);
+    ButtonClick(menuUI.resetButton, 0, 0, 0, 1, -1);
 }
 
 void UpdateLevelSelection()
@@ -348,7 +360,7 @@ void UpdateLevelSelection()
     {
         DrawRectangleRec(levelUI.LevelButton[i], RED);
         DrawText("LOCKED!", levelUI.LevelButton[i].x + 50, levelUI.LevelButton[i].y + 13, 25, WHITE);
-        ButtonClick(levelUI.LevelButton[i], 2, 0, 0, i);
+        ButtonClick(levelUI.LevelButton[i], 2, 0, 0, 0, i);
     }
 
     // Drawing buttons and their labels
@@ -360,7 +372,7 @@ void UpdateLevelSelection()
         snprintf(levelNum, sizeof(levelNum), "Level %d", tempLevel);
         DrawText(levelNum, levelUI.LevelButton[i].x + 60, levelUI.LevelButton[i].y + 13, 25, WHITE);
         tempLevel += 1;
-        ButtonClick(levelUI.LevelButton[i], 2, 0, 0, i);
+        ButtonClick(levelUI.LevelButton[i], 2, 0, 0, 0, i);
     }
 }
 
@@ -401,9 +413,9 @@ void UpdateInGameUI()
         DrawText(info, 635, 15, 35, RAYWHITE);
 
         // Button controls
-        ButtonClick(inGameUI.menuButton, 0, 0, 0, -1);
-        ButtonClick(inGameUI.musicButton, 2, 1, 0, -1);
-        ButtonClick(inGameUI.soundButton, 2, 0, 1, -1);
+        ButtonClick(inGameUI.menuButton, 0, 0, 0, 0, -1);
+        ButtonClick(inGameUI.musicButton, 2, 1, 0, 0, -1);
+        ButtonClick(inGameUI.soundButton, 2, 0, 1, 0, -1);
     }
     else
     {
@@ -646,7 +658,11 @@ void UpdateResult()
         if (soundState == SOUND_ON) PlaySound(soundEffects.winSound);
         for (int i = 1; i <= 5; i++)
         {
-            if (gameStats.level == i && gameStats.targetScore == 750 + 250 * i) gameStats.level++;
+            if (gameStats.level == i && gameStats.targetScore == 750 + 250 * i)
+            {
+                gameStats.level++;
+				WriteDataToFile(gameStats.level); // Seviye güncelleme
+            }
         }
         
     }
@@ -750,23 +766,23 @@ void UpdateAfterGame()
         DrawText("Return to the main menu", afterGameUI.menuButton.x + 17, afterGameUI.menuButton.y + 33, 30, DARKPURPLE);
 
         // Button controls
-        ButtonClick(afterGameUI.menuButton, 0, 0, 0, -1);
+        ButtonClick(afterGameUI.menuButton, 0, 0, 0, 0, -1);
         switch (gameStats.level)
         {
         case 1:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0);
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 0);
             break;
         case 2:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 1);
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 1);
             break;
         case 3:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 2);
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 2);
             break;
         case 4:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 3);
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 3);
             break;
         case 5:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 4);
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 4);
             break;
         }
     }
@@ -784,8 +800,8 @@ void UpdateAfterGame()
         DrawText("Try again!", afterGameUI.restartButton.x+57, afterGameUI.restartButton.y+22, 28, LIGHTGRAY);
 
         // Button controls
-        ButtonClick(afterGameUI.menuButton, 0, 0, 0, -1);
-        ButtonClick(afterGameUI.restartButton, 2, 0, 0, -1);
+        ButtonClick(afterGameUI.menuButton, 0, 0, 0, 0, -1);
+        ButtonClick(afterGameUI.restartButton, 2, 0, 0, 0, -1);
     }
 }
 
@@ -797,7 +813,7 @@ void UpdateCompleted()
     DrawText("Congratulations!", 160, 130, 60, WHITE);
     DrawText("The game is completed!", 230, 200, 30, WHITE);
     DrawText("Return to the main menu.", completedUI.menuButton.x+20, completedUI.menuButton.y+15, 20, DARKPURPLE);
-    ButtonClick(completedUI.menuButton, 0, 0, 0, -1);
+    ButtonClick(completedUI.menuButton, 0, 0, 0, 0, -1);
 }
 
 void Unload()
@@ -817,4 +833,29 @@ void Unload()
     UnloadMusicStream(soundEffects.music);
     CloseAudioDevice();
     CloseWindow();
+}
+
+void ReadDataFromFile()
+{
+    FILE* file = fopen("assets/save.txt", "r");
+    if (file == NULL)
+    {
+        printf("Error opening file!\n");
+        gameStats.level = 1;
+        return;
+    }
+    fscanf(file, "%d", &gameStats.level);
+    fclose(file);
+}
+
+void WriteDataToFile(int level)
+{
+    FILE* file = fopen("assets/save.txt", "w");
+    if (file == NULL)
+    {
+        printf("Error opening file!\n");
+        return;
+    }
+    fprintf(file, "%d", level);
+    fclose(file);
 }
