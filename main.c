@@ -22,21 +22,6 @@ Texture2D candyTextures[CANDY_TYPES];
 
 // Initializing grid size
 int grid[GRID_HEIGHT][GRID_WIDTH];
-
-typedef struct
-{
-    int swapActive;
-    int swapX1, swapY1, swapX2, swapY2;
-    float swapProgress;
-} SwapAnim; SwapAnim swapAnim;
-
-typedef struct {
-    int x, y;
-    int active;
-    float explosionProgress;
-    int candyType;
-} ExplosionAnim; ExplosionAnim explosionAnim[MAX_EXPLOSIONS];
-
 float visualY[GRID_HEIGHT][GRID_WIDTH];
 float visualX[GRID_HEIGHT][GRID_WIDTH];
 
@@ -106,19 +91,36 @@ typedef struct
 	int dragStartY;
 } Drag; Drag drag;
 
+typedef struct
+{
+    int swapActive;
+    int swapX1, swapY1, swapX2, swapY2;
+    float swapProgress;
+} SwapAnim; SwapAnim swapAnim;
+
+typedef struct {
+    int x, y;
+    int active;
+    float explosionProgress;
+    int candyType;
+} ExplosionAnim; ExplosionAnim explosionAnim[MAX_EXPLOSIONS];
+
 // For game states and music/sound states
 typedef enum { BEFOREPLAY, LEVELSELECTION, PLAYING, AFTERPLAY, COMPLETED } GameState; GameState gameState = 0;
 typedef enum { WIN, LOSE } WinState; WinState winState = LOSE;
 typedef enum { MUSIC_ON, MUSIC_OFF } MusicState; MusicState musicState = MUSIC_ON;
 typedef enum { SOUND_ON, SOUND_OFF } SoundState; SoundState soundState = SOUND_ON;
 
-// Function prototypes
+// Fundamental Functions
 void InitAndLoad();
-void UpdateMusic();
-void ButtonClick(Rectangle, int, bool, bool, bool, int);
 void UpdateMenu();
 void UpdateLevelSelection();
 void UpdateGameplay();
+void UpdateAfterGame();
+void UpdateCompleted();
+void Unload(); // Kaynakları serbest bırakma
+
+// Gameplay Funcitons
 void UpdateInGameUI();
 void UpdateGrid();
 void Dragging();
@@ -128,9 +130,10 @@ void UpdateResult();
 void StartExplosion(int x, int y, int candyType);
 void UpdateExplosion(float delta);
 void UpdateSwap();
-void UpdateAfterGame();
-void UpdateCompleted();
-void Unload(); // Kaynakları serbest bırakma
+
+// General Functions
+void UpdateMusic();
+void ButtonClick(Rectangle, int, bool, bool, bool, int);
 void ReadDataFromFile();
 void WriteDataToFile(int level); // Dosyadan veri okuma ve yazma
 
@@ -269,52 +272,6 @@ void InitAndLoad()
     
 }
 
-void UpdateMusic(void)
-{
-    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
-}
-
-void ButtonClick(Rectangle button, int state, bool musicControl, bool soundControl, bool resetControl, int targetS)
-{
-    Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    {
-        if (CheckCollisionPointRec(mousePos, button))
-        {
-            if (musicControl)
-            {
-                if (musicState == MUSIC_ON) musicState = MUSIC_OFF;
-                else if (musicState == MUSIC_OFF) musicState = MUSIC_ON;
-            }
-            if (soundControl)
-            {
-                if (soundState == SOUND_ON) soundState = SOUND_OFF;
-                else if (soundState == SOUND_OFF) soundState = SOUND_ON;
-            }
-            if (resetControl)
-            {
-				WriteDataToFile(1); // Resetting level to 1
-                gameStats.level = 1;
-            }
-            if (targetS < gameStats.level)
-            {
-                if (targetS != -1)
-                {
-                    gameStats.targetScore = levelUI.TargetScore[targetS];
-
-                }
-                gameState = state;
-                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
-
-                // Resetting stats
-                gameStats.score = 0;
-                gameStats.movesLeft = 20;
-            }
-            else if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
-        }
-    }
-}
-
 void UpdateMenu()
 {
     UpdateMusic();
@@ -387,6 +344,96 @@ void UpdateGameplay()
     UpdateResult();
     UpdateExplosion(GetFrameTime());
 	UpdateSwap();
+}
+
+void UpdateAfterGame()
+{
+    if (winState == WIN)
+    {
+        ClearBackground(DARKGREEN);
+
+        // Drawing buttons
+        DrawRectangleRec(afterGameUI.menuButton, LIGHTGRAY);
+
+        // Son seviye de bittiyse, sıradaki seviye butonunu gösterme
+        if (gameStats.level <= 5)
+        {
+            DrawRectangleRec(afterGameUI.nextLevelButton, DARKPURPLE);
+            DrawText("Next Level!", afterGameUI.nextLevelButton.x + 53, afterGameUI.nextLevelButton.y + 22, 28, LIGHTGRAY);
+        }
+
+        // Drawing labels
+        DrawText("YOU WIN!", SCREEN_WIDTH / 5 + 15, SCREEN_HEIGHT / 5, 100, RAYWHITE);
+        DrawText("Return to the main menu", afterGameUI.menuButton.x + 17, afterGameUI.menuButton.y + 33, 30, DARKPURPLE);
+
+        // Button controls
+        ButtonClick(afterGameUI.menuButton, 0, 0, 0, 0, -1);
+        switch (gameStats.level)
+        {
+        case 1:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 0);
+            break;
+        case 2:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 1);
+            break;
+        case 3:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 2);
+            break;
+        case 4:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 3);
+            break;
+        case 5:
+            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 4);
+            break;
+        }
+    }
+    else if (winState == LOSE)
+    {
+        ClearBackground(RED);
+
+        // Drawing buttons
+        DrawRectangleRec(afterGameUI.menuButton, LIGHTGRAY);
+        DrawRectangleRec(afterGameUI.restartButton, DARKPURPLE);
+
+        // Drawing labels
+        DrawText("GAME OVER!", SCREEN_WIDTH / 8 - 10, SCREEN_HEIGHT / 5, 100, RAYWHITE);
+        DrawText("Return to the main menu", afterGameUI.menuButton.x + 17, afterGameUI.menuButton.y + 33, 30, DARKPURPLE);
+        DrawText("Try again!", afterGameUI.restartButton.x + 57, afterGameUI.restartButton.y + 22, 28, LIGHTGRAY);
+
+        // Button controls
+        ButtonClick(afterGameUI.menuButton, 0, 0, 0, 0, -1);
+        ButtonClick(afterGameUI.restartButton, 2, 0, 0, 0, -1);
+    }
+}
+
+void UpdateCompleted()
+{
+    ClearBackground(DARKPURPLE);
+    DrawRectangleRec(completedUI.menuButton, LIGHTGRAY);
+    DrawTextureEx(completedUI.final, (Vector2) { 180, 275 }, -13.0f, 0.4f, WHITE);
+    DrawText("Congratulations!", 160, 130, 60, WHITE);
+    DrawText("The game is completed!", 230, 200, 30, WHITE);
+    DrawText("Return to the main menu.", completedUI.menuButton.x + 20, completedUI.menuButton.y + 15, 20, DARKPURPLE);
+    ButtonClick(completedUI.menuButton, 0, 0, 0, 0, -1);
+}
+
+void Unload()
+{
+    UnloadTexture(menuUI.wallpaper);
+
+    for (int i = 0; i < CANDY_TYPES; i++)
+    {
+        UnloadTexture(candyTextures[i]);
+    }
+
+    UnloadSound(soundEffects.buttonClick);
+    UnloadSound(soundEffects.swapSound);
+    UnloadSound(soundEffects.explosionSound);
+    UnloadSound(soundEffects.winSound);
+    UnloadSound(soundEffects.loseSound);
+    UnloadMusicStream(soundEffects.music);
+    CloseAudioDevice();
+    CloseWindow();
 }
 
 void UpdateInGameUI()
@@ -745,94 +792,50 @@ void UpdateSwap()
     }
 }
 
-void UpdateAfterGame()
+void UpdateMusic(void)
 {
-    if (winState == WIN)
-    {
-        ClearBackground(DARKGREEN);
-
-        // Drawing buttons
-        DrawRectangleRec(afterGameUI.menuButton, LIGHTGRAY);
-
-        // Son seviye de bittiyse, sıradaki seviye butonunu gösterme
-        if (gameStats.level <= 5)
-        {
-            DrawRectangleRec(afterGameUI.nextLevelButton, DARKPURPLE);
-            DrawText("Next Level!", afterGameUI.nextLevelButton.x + 53, afterGameUI.nextLevelButton.y + 22, 28, LIGHTGRAY);
-        }
-
-        // Drawing labels
-        DrawText("YOU WIN!", SCREEN_WIDTH / 5 + 15, SCREEN_HEIGHT / 5, 100, RAYWHITE);
-        DrawText("Return to the main menu", afterGameUI.menuButton.x + 17, afterGameUI.menuButton.y + 33, 30, DARKPURPLE);
-
-        // Button controls
-        ButtonClick(afterGameUI.menuButton, 0, 0, 0, 0, -1);
-        switch (gameStats.level)
-        {
-        case 1:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 0);
-            break;
-        case 2:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 1);
-            break;
-        case 3:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 2);
-            break;
-        case 4:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 3);
-            break;
-        case 5:
-            ButtonClick(afterGameUI.nextLevelButton, 2, 0, 0, 0, 4);
-            break;
-        }
-    }
-    else if (winState == LOSE)
-    {
-		ClearBackground(RED);
-
-		// Drawing buttons
-        DrawRectangleRec(afterGameUI.menuButton, LIGHTGRAY);
-        DrawRectangleRec(afterGameUI.restartButton, DARKPURPLE);
-
-		// Drawing labels
-        DrawText("GAME OVER!", SCREEN_WIDTH / 8 - 10, SCREEN_HEIGHT / 5, 100, RAYWHITE);
-        DrawText("Return to the main menu", afterGameUI.menuButton.x+17, afterGameUI.menuButton.y+33, 30, DARKPURPLE);
-        DrawText("Try again!", afterGameUI.restartButton.x+57, afterGameUI.restartButton.y+22, 28, LIGHTGRAY);
-
-        // Button controls
-        ButtonClick(afterGameUI.menuButton, 0, 0, 0, 0, -1);
-        ButtonClick(afterGameUI.restartButton, 2, 0, 0, 0, -1);
-    }
+    if (musicState == MUSIC_ON) UpdateMusicStream(soundEffects.music);
 }
 
-void UpdateCompleted()
+void ButtonClick(Rectangle button, int state, bool musicControl, bool soundControl, bool resetControl, int targetS)
 {
-    ClearBackground(DARKPURPLE);
-    DrawRectangleRec(completedUI.menuButton, LIGHTGRAY);
-    DrawTextureEx(completedUI.final, (Vector2) { 180, 275 }, -13.0f, 0.4f, WHITE);
-    DrawText("Congratulations!", 160, 130, 60, WHITE);
-    DrawText("The game is completed!", 230, 200, 30, WHITE);
-    DrawText("Return to the main menu.", completedUI.menuButton.x+20, completedUI.menuButton.y+15, 20, DARKPURPLE);
-    ButtonClick(completedUI.menuButton, 0, 0, 0, 0, -1);
-}
-
-void Unload()
-{
-    UnloadTexture(menuUI.wallpaper);
-
-    for (int i = 0; i < CANDY_TYPES; i++)
+    Vector2 mousePos = GetMousePosition();
+    if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     {
-        UnloadTexture(candyTextures[i]);
-    }
+        if (CheckCollisionPointRec(mousePos, button))
+        {
+            if (musicControl)
+            {
+                if (musicState == MUSIC_ON) musicState = MUSIC_OFF;
+                else if (musicState == MUSIC_OFF) musicState = MUSIC_ON;
+            }
+            if (soundControl)
+            {
+                if (soundState == SOUND_ON) soundState = SOUND_OFF;
+                else if (soundState == SOUND_OFF) soundState = SOUND_ON;
+            }
+            if (resetControl)
+            {
+                WriteDataToFile(1); // Resetting level to 1
+                gameStats.level = 1;
+            }
+            if (targetS < gameStats.level)
+            {
+                if (targetS != -1)
+                {
+                    gameStats.targetScore = levelUI.TargetScore[targetS];
 
-	UnloadSound(soundEffects.buttonClick);
-	UnloadSound(soundEffects.swapSound);
-	UnloadSound(soundEffects.explosionSound);
-	UnloadSound(soundEffects.winSound);
-	UnloadSound(soundEffects.loseSound);
-    UnloadMusicStream(soundEffects.music);
-    CloseAudioDevice();
-    CloseWindow();
+                }
+                gameState = state;
+                if (soundState == SOUND_ON) PlaySound(soundEffects.buttonClick);
+
+                // Resetting stats
+                gameStats.score = 0;
+                gameStats.movesLeft = 20;
+            }
+            else if (soundState == SOUND_ON) PlaySound(soundEffects.loseSound);
+        }
+    }
 }
 
 void ReadDataFromFile()
