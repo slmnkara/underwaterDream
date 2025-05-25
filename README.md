@@ -1,10 +1,6 @@
 **To-do List:**
-- [ ] Kodları güzelleştir, sadeleştir. Gerekmeyen parametreleri ortadan kaldır (getframetime). Seviye mekaniğini toparla, çok dağınık çalışıyor.
-- [ ] main.c dosya ayrımı
 - [ ] checkmatches tekrar eden kod
-- [ ] level mekaniği için fonksiyon kullan int GetLevelNumber(int targetScore) { return targetScore / 250 - 3; }
 - [ ] yorum satırları ve dokümantasyon
-- [ ] pencere ölçeklendirme
 
 **Summary (Abstract / Executive Summary):** A brief description summarizing the project.
 
