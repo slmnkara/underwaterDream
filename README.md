@@ -1,7 +1,3 @@
-**To-do List:**
-- [ ] checkmatches tekrar eden kod
-- [ ] yorum satırları ve dokümantasyon
-
 **Summary (Abstract / Executive Summary):** A brief description summarizing the project.
 
 **Introduction**
