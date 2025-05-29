@@ -9,7 +9,6 @@
 #define GRID_HEIGHT 8
 
 #define CELL_SIZE 100 // Size of each cell in pixels
-
 #define GAME_UI_HEIGHT 60 // Height of the game UI in pixels
 
 // Initializing screen dimensions

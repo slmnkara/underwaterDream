@@ -2,11 +2,11 @@
 
 int main(void)
 {
-    InitGame(); // Initializing game
+    InitGame(); // Initializes the game
     while (!WindowShouldClose())
     {
         BeginDrawing();
-        switch (gameState) // Updating the screen depending on gameState
+        switch (gameState) // Updates the screen depending on gameState
         {
         case BEFORE_PLAY:
             UpdateMainMenuScreen();
@@ -26,6 +26,6 @@ int main(void)
         }
         EndDrawing();
     }
-	DeinitGame(); // Deinitializing game
+	DeinitGame(); // Deinitializes the game
     return 0;
 }

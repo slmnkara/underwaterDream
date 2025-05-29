@@ -324,7 +324,7 @@ void UpdateAfterGameScreen()
         DrawText("YOU WIN!", SCREEN_WIDTH / 5 + 15, SCREEN_HEIGHT / 5, 100, RAYWHITE);
         DrawText("Return to the main menu", afterGameUI.menu_button.x + 17, afterGameUI.menu_button.y + 33, 30, DARKPURPLE);
 
-        // Button controls
+		// Button control for the next level button
         IsButtonClicked(afterGameUI.next_level_button, ACTIVE, BEFORE_PLAY, CONTROL_NONE, -1);
 		switch (gameStats.current_level) // Button controls based on the current level
         {
@@ -344,6 +344,8 @@ void UpdateAfterGameScreen()
             IsButtonClicked(afterGameUI.next_level_button, ACTIVE, PLAYING, SET_LEVEL, 4);
             break;
         }
+		// Button control for the main menu
+        IsButtonClicked(afterGameUI.menu_button, ACTIVE, BEFORE_PLAY, CONTROL_NONE, -1);
     }
     else if (winState == LOSE)
     {
