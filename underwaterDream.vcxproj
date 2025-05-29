@@ -123,18 +123,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="effects.c" />
-    <ClCompile Include="game.c" />
-    <ClCompile Include="game_logic.c" />
+    <ClCompile Include="definitions.c" />
     <ClCompile Include="main.c" />
-    <ClCompile Include="ui.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="definitions.h" />
-    <ClInclude Include="effects.h" />
-    <ClInclude Include="game.h" />
-    <ClInclude Include="game_logic.h" />
-    <ClInclude Include="ui.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
