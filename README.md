@@ -1,24 +1,24 @@
-**Summary (Abstract / Executive Summary):** A brief description summarizing the project.
+# Underwater Dream
 
-**Introduction**
-Similar to Candy Crush Saga, coded with Raylib for my university project. The purpose of this project I've undertaken is to successfully emulate Candy Crush Saga with a theme of my own choosing. My expectation is to be able to design the game with a clean code, nice functionalitiy and good looking.
+Underwater Dream is a match-three puzzle game with an underwater theme, inspired by Candy Crush Saga. Developed in **C** using the **Raylib** graphics library, this game is designed for **PC** and provides a relaxing and entertaining experience.
 
-**Methodology**
-* **Planned and Structured Development:** Defining needs and creating a foundational structure from the outset prevents disorganized development.
-* **Manageability and Ease of Maintenance:** The modular structure makes the code easier to understand, test, and maintain.
-* **Scalability:** Adding new features or modifying existing ones is simplified by the modular design, as these operations can be performed with less impact on other parts of the software.
-* **Potential for Reusability:** Well-defined functions can potentially be reused in other projects or different sections of the software in the future.
+## Features
+- **Match-three mechanics** with underwater visuals
+- **Smooth animations** integrated with AI-assisted debugging
+- **Modular code structure** for easy maintenance and expansion
 
-**Results and Evaluation:** An assessment of the project's successes, shortcomings, and future plans.
+## Development Process
+- **Languages & Tools**: C, Raylib
+- **Workflow**: Design → Coding → Testing → Optimization
+- **Challenges**: Animation integration, UI scaling (upcoming improvement)
+- **Modularity**: Clean, structured code blocks for easy feature management
 
-**Recommendations:** Suggestions, improvements, or forward-looking steps related to the project.
+## Future Plans
+- **Enhanced animations** for smoother visual effects
+- **Additional gameplay mechanics** (power-ups, frozen candies, etc.)
+- **Dynamic UI scaling** for better adaptability
+- **Mobile version** development
 
-**References:** ChatGPT, Gemini, [YouTube](https://youtu.be/UoAsDlUwjy0?si=3diRxCQtEwT4yvnG)
-
-**Deliverables Upon Project Completion:**
-
-1. Project source files
-2. Project report
-3. A 5-10 minute presentation video (YouTube)
-
-**Final Project Submission Date:** June 1st at 12:00 PM
+## Resources
+- YouTube tutorial for game development with raylib. [Link](https://www.youtube.com/watch?v=UoAsDlUwjy0&t=11876s)
+- AI tools used: ChatGPT, Gemini, Copilot
