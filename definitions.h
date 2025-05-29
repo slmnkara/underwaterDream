@@ -4,18 +4,19 @@
 #include "raylib.h"
 #include "stdio.h"
 
-
-
-// Initializing grid, cell, in game ui and screen sizes
+// Initializing grid
 #define GRID_WIDTH 8
 #define GRID_HEIGHT 8
-#define CELL_SIZE 100
-#define GAME_UI_HEIGHT 60
+
+#define CELL_SIZE 100 // Size of each cell in pixels
+
+#define GAME_UI_HEIGHT 60 // Height of the game UI in pixels
+
+// Initializing screen dimensions
 #define SCREEN_WIDTH (GRID_WIDTH * CELL_SIZE)
 #define SCREEN_HEIGHT ((GRID_HEIGHT * CELL_SIZE) + GAME_UI_HEIGHT)
 
-// Initializing candy types
-#define CANDY_TYPES 5
+#define CANDY_TYPES 5 // Initializing candy types
 
 // Initializing animation durations
 #define EXPLOSION_ANIMATION_DURATION 1.0f
@@ -23,24 +24,27 @@
 #define MAX_EXPLOSIONS 64
 
 int grid[GRID_HEIGHT][GRID_WIDTH]; // Grid for candies
+
 float visualY[GRID_HEIGHT][GRID_WIDTH]; // Visual Y positions for candies
 float visualX[GRID_HEIGHT][GRID_WIDTH]; // Visual X positions for candies
+
 extern const int TARGET_SCORE[5]; // Target scores for each level
 extern const int MAX_MOVES; // Maximum moves allowed
 
-// For game states and music/sound states
-typedef enum { BEFORE_PLAY, LEVEL_SELECTION, PLAYING, AFTER_PLAY, GAME_COMPLETED } GameState; extern GameState gameState;
-typedef enum { WIN, LOSE } WinState; 
-typedef enum { MUSIC_ON, MUSIC_OFF } MusicState;
-typedef enum { SOUND_ON, SOUND_OFF } SoundState;  
+typedef enum { BEFORE_PLAY, LEVEL_SELECTION, PLAYING, AFTER_PLAY, GAME_COMPLETED } GameState; // Game states for the game flow
+extern GameState gameState; // External variable to use the current game state for main.c
+
+typedef enum { WIN, LOSE } WinState; // Win states for the game
+typedef enum { MUSIC_ON, MUSIC_OFF } MusicState; // Music states for the game
+typedef enum { SOUND_ON, SOUND_OFF } SoundState; // Sound states for the game
 
 typedef enum { BACKGROUND_MUSIC, ACTIVE_BUTTON_SOUND, DEACTIVE_BUTTON_SOUND, SWAP_SOUND,
-                EXPLOSION_SOUND, WIN_SOUND, LOSE_SOUND } Audio;
+EXPLOSION_SOUND, WIN_SOUND, LOSE_SOUND} Audio; // Audio play types for the game
 
-// For isButtonClicked() function
-typedef enum { CONTROL_NONE, SET_MUSIC_STATE, SET_SOUND_STATE, SET_LEVEL, RESET_LEVEL } ControlType;
-typedef enum { ACTIVE, DEACTIVE } ButtonState;
+typedef enum { CONTROL_NONE, SET_MUSIC_STATE, SET_SOUND_STATE, SET_LEVEL, RESET_LEVEL } ControlType; // Control types for button actions
+typedef enum { ACTIVE, DEACTIVE } ButtonState; // Button states for the button sound effects
 
+// UI structures for different screens
 typedef struct
 {
     Rectangle play_button;
@@ -82,6 +86,8 @@ typedef struct
     Rectangle menu_button;
     Texture2D trophy_texture;
 } GameCompletedUI;
+
+// Game statistics structure to keep track of the current game statistics
 typedef struct
 {
     int current_level;
@@ -90,6 +96,7 @@ typedef struct
     int target_score;
 } GameStats;
 
+// Audio structure to manage all audio assets
 typedef struct
 {
     Music background_music;
@@ -101,20 +108,20 @@ typedef struct
     Sound lose_sound;
 } Audio_t;
 
+// Dragging struct
 typedef struct
 {
     int dragStartX;
     int dragStartY;
 } Drag;
 
+// Animation structures for swap, explosion animations
 typedef struct
 {
     int swapActive;
     int swapX1, swapY1, swapX2, swapY2;
     float swapProgress;
 } SwapAnim;
-
-float swapStartX1, swapStartY1, swapStartX2, swapStartY2;
 
 typedef struct {
     int x, y;
@@ -123,19 +130,30 @@ typedef struct {
     int candyType;
 } ExplosionAnim;
 
-void LoadTextures();
-void UnloadTextures();
+// Function prototypes for initialization
 void InitGame();
 void InitUI();
+void InitGrid();
+void InitDrag();
+void InitSwapAnim();
+
+// Function prototypes for texture management
+void LoadTextures();
+void UnloadTextures();
+
+// Function prototypes for audio management
 void LoadAudio();
 void UnloadAudio();
 void PlayAudio(Audio audio);
-void InitGrid();
+
+// Function prototypes for updating different game screens
 void UpdateMainMenuScreen();
 void UpdateLevelSelectionScreen();
 void UpdateGameplayScreen();
 void UpdateAfterGameScreen();
 void UpdateGameCompletedScreen();
+
+// Function prototypes for game logic
 void UpdateGameUI();
 void UpdateGrid();
 void HandleDragging();
@@ -144,12 +162,19 @@ void MarkHorizontalMatches(bool toExplode[GRID_HEIGHT][GRID_WIDTH]);
 void MarkVerticalMatches(bool toExplode[GRID_HEIGHT][GRID_WIDTH]);
 void ProcessMatches();
 void ProcessCandyFalls();
-void CheckGameStatus();
+void UpdateSwap();
 void TriggerExplosion(int x, int y, int candyType);
 void UpdateExplosion(float delta);
-void UpdateSwap();
+void CheckGameStatus();
+
+// Function prototype for button click handling
 void IsButtonClicked(Rectangle button, ButtonState buttonState, GameState setGameState, ControlType controlType, int setLevel);
+
+// Function prototypes for game progress saving and loading
 void LoadGameProgress();
 void SaveGameProgress(int level);
+
+// Function prototype to deinitialize the game and free resources
+void DeinitGame();
 
 #endif // DEFINITIONS_H

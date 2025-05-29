@@ -1,98 +1,54 @@
 #include "definitions.h"
 
-const int TARGET_SCORE[5] = { 1000, 1250, 1500, 1750, 2000 }; // Target scores for each level
-const int MAX_MOVES = 20; // Maximum moves allowed
-
-// Game states
+// State structs
 GameState gameState;
 WinState winState;
 MusicState musicState;
 SoundState soundState;
 
-Image window_icon; // Window icon
-GameStats gameStats; // Game statistics
-Audio_t audio_t; // Audio management
-
-// UI elements
+// UI elements structs
 MainMenuUI mainMenuUI;
 LevelUI levelUI;
 GameUI gameUI;
 AfterGameUI afterGameUI;
 GameCompletedUI gameCompletedUI;
 
-// Dragging and animation management
+// Dragging and animation management structs
 Drag drag;
 SwapAnim swapAnim;
 ExplosionAnim explosionAnim[MAX_EXPLOSIONS];
 
-void LoadTextures()
-{
-    window_icon = LoadImage("assets/textures/window_icon.png");
-    mainMenuUI.wallpaper = LoadTexture("assets/textures/main_menu_wallpaper.png");
-    gameUI.candy_textures[0] = LoadTexture("assets/textures/texture1.png");
-    gameUI.candy_textures[1] = LoadTexture("assets/textures/texture2.png");
-    gameUI.candy_textures[2] = LoadTexture("assets/textures/texture3.png");
-    gameUI.candy_textures[3] = LoadTexture("assets/textures/texture4.png");
-    gameUI.candy_textures[4] = LoadTexture("assets/textures/texture5.png");
-    gameCompletedUI.trophy_texture = LoadTexture("assets/textures/trophy_texture.png");
-}
+GameStats gameStats; // Game statistics struct
 
-void UnloadTextures()
-{
-    UnloadImage(window_icon);
-    UnloadTexture(mainMenuUI.wallpaper);
-    for (int i = 0; i < CANDY_TYPES; i++)
-    {
-        UnloadTexture(gameUI.candy_textures[i]);
-    }
-    UnloadTexture(gameCompletedUI.trophy_texture);
-}
+Audio_t audio_t; // Audio management struct
 
+Image window_icon; // Image for window icon
+
+const int TARGET_SCORE[5] = { 1000, 1250, 1500, 1750, 2000 }; // Target scores for each level
+const int MAX_MOVES = 20; // Maximum moves allowed
+
+// Initializes all game elements
 void InitGame()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Underwater Dream");
+    SetWindowIcon(window_icon); // Setting the window icon
     InitAudioDevice();
-
-    LoadTextures(); // Loading textures
-    LoadAudio(); // Loading audio files
-    InitUI(); // Initializing UI elements
-
-    // Setting the window icon
-    SetWindowIcon(window_icon);
 
     gameState = BEFORE_PLAY; // Initial game state
     winState = LOSE; // Initial win state
     musicState = MUSIC_ON; // Initial music state
     soundState = SOUND_ON; // Initial sound state
 
-    LoadGameProgress();
-    InitGrid();
-
-    // Dragging start values
-    drag.dragStartX = -1;
-    drag.dragStartY = -1;
-
-    // Swap animation start values
-    swapAnim.swapActive = 0;
-    swapAnim.swapProgress = 0.0f;
-    for (int y = 0; y < GRID_HEIGHT; y++)
-    {
-        for (int x = 0; x < GRID_WIDTH; x++)
-        {
-            visualY[y][x] = (float)y;
-            visualX[y][x] = (float)x;
-        }
-    }
+    LoadTextures(); // Loading textures
+    LoadAudio(); // Loading audio files
+    InitUI(); // Initializing UI elements
+    LoadGameProgress(); // Loading game progress from file
+    InitGrid(); // Initializing the grid with random candies
+	InitDrag();  // Initializing dragging start values
+	InitSwapAnim(); // Initializing swap animation start values
 }
 
-void DeinitGame()
-{
-    UnloadTextures(); // Unloading textures
-    UnloadAudio(); // Unloading audio files
-    CloseAudioDevice();
-    CloseWindow();
-}
-
+// Initializes the elements of UI
 void InitUI()
 {
     mainMenuUI.play_button = (Rectangle){ 300,300,200,50 };
@@ -121,11 +77,82 @@ void InitUI()
     gameCompletedUI.menu_button = (Rectangle){ 250,650,300,50 };
 }
 
+// Initializes first values for candies for the grid
+void InitGrid()
+{
+    for (int y = 0; y < GRID_HEIGHT; y++)
+    {
+        for (int x = 0; x < GRID_WIDTH; x++)
+        {
+            int candy;
+            do
+            {
+                candy = GetRandomValue(0, CANDY_TYPES - 1);
+            } while (
+                (x >= 2 && grid[y][x - 1] == candy && grid[y][x - 2] == candy) ||
+                (y >= 2 && grid[y - 1][x] == candy && grid[y - 2][x] == candy)
+                ); // This condition prevents the formation of candies that will explode.
+            grid[y][x] = candy;
+        }
+    }
+}
+
+// Initializes dragging start values
+void InitDrag()
+{
+    // Dragging start values
+    drag.dragStartX = -1;
+    drag.dragStartY = -1;
+}
+
+// Initializes swap animation start values
+void InitSwapAnim()
+{
+    // Swap animation start values
+    swapAnim.swapActive = 0;
+    swapAnim.swapProgress = 0.0f;
+
+	// Swap positions start values
+    for (int y = 0; y < GRID_HEIGHT; y++)
+    {
+        for (int x = 0; x < GRID_WIDTH; x++)
+        {
+            visualY[y][x] = (float)y;
+            visualX[y][x] = (float)x;
+        }
+    }
+}
+
+// Functions for loading and unloading textures
+void LoadTextures()
+{
+    window_icon = LoadImage("assets/textures/window_icon.png");
+    mainMenuUI.wallpaper = LoadTexture("assets/textures/main_menu_wallpaper.png");
+    gameUI.candy_textures[0] = LoadTexture("assets/textures/texture1.png");
+    gameUI.candy_textures[1] = LoadTexture("assets/textures/texture2.png");
+    gameUI.candy_textures[2] = LoadTexture("assets/textures/texture3.png");
+    gameUI.candy_textures[3] = LoadTexture("assets/textures/texture4.png");
+    gameUI.candy_textures[4] = LoadTexture("assets/textures/texture5.png");
+    gameCompletedUI.trophy_texture = LoadTexture("assets/textures/trophy_texture.png");
+}
+
+void UnloadTextures()
+{
+    UnloadImage(window_icon);
+    UnloadTexture(mainMenuUI.wallpaper);
+    for (int i = 0; i < CANDY_TYPES; i++)
+    {
+        UnloadTexture(gameUI.candy_textures[i]);
+    }
+    UnloadTexture(gameCompletedUI.trophy_texture);
+}
+
+// Functions for loading and unloading audio files
 void LoadAudio()
 {
     // Background Music
     audio_t.background_music = LoadMusicStream("assets/audio/background_music.mp3");
-    PlayMusicStream(audio_t.background_music);
+	PlayMusicStream(audio_t.background_music);
 
     // Sound Effects
     audio_t.active_button_sound = LoadSound("assets/audio/active_button_sound.mp3");
@@ -156,6 +183,7 @@ void UnloadAudio()
     UnloadSound(audio_t.lose_sound);
 }
 
+// Function to play audio based on the audio type
 void PlayAudio(Audio audio)
 {
     switch (audio)
@@ -184,26 +212,7 @@ void PlayAudio(Audio audio)
     }
 }
 
-void InitGrid()
-{
-    // Initializing first values for candies
-    for (int y = 0; y < GRID_HEIGHT; y++)
-    {
-        for (int x = 0; x < GRID_WIDTH; x++)
-        {
-            int candy;
-            do
-            {
-                candy = GetRandomValue(0, CANDY_TYPES - 1);
-            } while (
-                (x >= 2 && grid[y][x - 1] == candy && grid[y][x - 2] == candy) ||
-                (y >= 2 && grid[y - 1][x] == candy && grid[y - 2][x] == candy)
-                ); // This condition prevents the formation of candies that will explode.
-            grid[y][x] = candy;
-        }
-    }
-}
-
+// Functions for updating different game screens
 void UpdateMainMenuScreen()
 {
     PlayAudio(BACKGROUND_MUSIC);
@@ -237,7 +246,7 @@ void UpdateMainMenuScreen()
     else
         DrawText("OFF", mainMenuUI.sound_button.x + 100, mainMenuUI.sound_button.y + 17, 18, RED);
 
-    // Drawing current level
+	// Drawing current level at the bottom left corner
     char info[128];
     snprintf(info, sizeof(info), "Current Level: %d", gameStats.current_level);
     DrawText(info, 15, 830, 20, BLACK);
@@ -258,15 +267,15 @@ void UpdateLevelSelectionScreen()
     DrawText("Level Selection", SCREEN_WIDTH / 8, SCREEN_HEIGHT / 10, 80, DARKPURPLE);
     DrawText("Select a level to play!", SCREEN_WIDTH / 4 + 30, SCREEN_HEIGHT / 5, 30, DARKPURPLE);
 
-    // Drawing buttons
-    for (int i = gameStats.current_level; i <= 4; i++)
+	// Drawing level buttons which are locked and their labels
+	for (int i = gameStats.current_level; i <= 4; i++) // Starting from the next level
     {
         DrawRectangleRec(levelUI.level_button[i], RED);
         DrawText("LOCKED!", levelUI.level_button[i].x + 50, levelUI.level_button[i].y + 13, 25, WHITE);
         IsButtonClicked(levelUI.level_button[i], DEACTIVE, LEVEL_SELECTION, CONTROL_NONE, -1);
     }
 
-    // Drawing buttons and their labels
+    // Drawing active level buttons and their labels
     char levelNum[32] = { 0 };
     int tempLevel = 1;
     for (int i = 0; i < gameStats.current_level; i++)
@@ -284,6 +293,7 @@ void UpdateGameplayScreen()
     PlayAudio(BACKGROUND_MUSIC);
     ClearBackground(RAYWHITE);
 
+    // Game logic
     UpdateGameUI();
     UpdateGrid();
     if (!swapAnim.swapActive) HandleDragging();
@@ -303,7 +313,7 @@ void UpdateAfterGameScreen()
         // Drawing buttons
         DrawRectangleRec(afterGameUI.menu_button, LIGHTGRAY);
 
-        // Son seviye de bittiyse, sýradaki seviye butonunu gösterme
+		// If player has completed all levels, do not show the next level button
         if (gameStats.current_level <= 5)
         {
             DrawRectangleRec(afterGameUI.next_level_button, DARKPURPLE);
@@ -316,7 +326,7 @@ void UpdateAfterGameScreen()
 
         // Button controls
         IsButtonClicked(afterGameUI.next_level_button, ACTIVE, BEFORE_PLAY, CONTROL_NONE, -1);
-        switch (gameStats.current_level)
+		switch (gameStats.current_level) // Button controls based on the current level
         {
         case 1:
             IsButtonClicked(afterGameUI.next_level_button, ACTIVE, PLAYING, SET_LEVEL, 0);
@@ -373,9 +383,10 @@ void UpdateGameCompletedScreen()
     IsButtonClicked(gameCompletedUI.menu_button, ACTIVE, BEFORE_PLAY, CONTROL_NONE, -1);
 }
 
+// Function to update the game UI
 void UpdateGameUI()
 {
-    Vector2 mousePos = GetMousePosition();
+	Vector2 mousePos = GetMousePosition(); // Getting the mouse position
     if (mousePos.y <= GAME_UI_HEIGHT)
     {
         // Drawing background
@@ -401,9 +412,8 @@ void UpdateGameUI()
             DrawText("OFF", gameUI.sound_button.x + 35, gameUI.sound_button.y + 28, 18, RED);
 
         // Drawing level
-        char info[128];
-        snprintf(info, sizeof(info), "Level: %d", gameStats.target_score / 250 - 3); // Should be corrected
-        DrawText(info, 635, 15, 35, RAYWHITE);
+        snprintf(gameUI.char_level, sizeof(gameUI.char_level), "Level: %d", (gameStats.target_score / 250 - 3) /* This expression detects the level that the player is currently playing, not the current level. */);
+		DrawText(gameUI.char_level, 635, 15, 35, RAYWHITE);
 
         // Button controls
         IsButtonClicked(gameUI.menu_button, ACTIVE, BEFORE_PLAY, CONTROL_NONE, -1);
@@ -418,189 +428,230 @@ void UpdateGameUI()
         DrawRectangleRec(gameUI.score_rec, RAYWHITE);
         DrawRectangleRec(gameUI.moves_left_rec, RAYWHITE);
 
-        // Drawing game stats
-        snprintf(gameUI.char_level, sizeof(gameUI.char_level), "Level: %d", gameStats.target_score / 250 - 3); // Should be corrected
-        snprintf(gameUI.char_score, sizeof(gameUI.char_score), "Score: %d / %d", gameStats.current_score, gameStats.target_score);
-        snprintf(gameUI.char_moves_left, sizeof(gameUI.char_moves_left), "Moves Left: %d", gameStats.current_moves_left);
+		// Drawing game statistics
+        snprintf(gameUI.char_level, sizeof(gameUI.char_level), "Level: %d", (gameStats.target_score / 250 - 3) /* This expression detects the level that the player is currently playing, not the current level. */);
         DrawText(gameUI.char_level, gameUI.level_rec.x + 35, gameUI.level_rec.y + 12, 32, VIOLET);
+
+        snprintf(gameUI.char_score, sizeof(gameUI.char_score), "Score: %d / %d", gameStats.current_score, gameStats.target_score);
         DrawText(gameUI.char_score, gameUI.score_rec.x + 20, gameUI.score_rec.y + 15, 29, DARKGREEN);
+
+        snprintf(gameUI.char_moves_left, sizeof(gameUI.char_moves_left), "Moves Left: %d", gameStats.current_moves_left);
         DrawText(gameUI.char_moves_left, gameUI.moves_left_rec.x + 33, gameUI.moves_left_rec.y + 14, 30, DARKBLUE);
     }
 }
 
+// Function to update the grid and draw candies
 void UpdateGrid()
 {
-    // Her karede görsel konumu güncelle
-    float fallSpeed = 5.0f * GetFrameTime(); // Hýzý ayarlayabilirsiniz
-    for (int y = 0; y < GRID_HEIGHT; y++) {
-        for (int x = 0; x < GRID_WIDTH; x++) {
-            if (visualY[y][x] < y) {
-                visualY[y][x] += fallSpeed;
-                if (visualY[y][x] > y) visualY[y][x] = (float)y;
-            }
-            else if (visualY[y][x] > y) {
-                visualY[y][x] = (float)y; // yukarý çýkma olmasýn
-            }
-        }
-    }
+	float fallSpeed = 5.0f * GetFrameTime(); // We can adjust the fall speed here
 
-    // Draw normal candies
+    // Update visual positions for candies at every frame
     for (int y = 0; y < GRID_HEIGHT; y++)
     {
         for (int x = 0; x < GRID_WIDTH; x++)
         {
-            Rectangle cell = { x * CELL_SIZE, y * CELL_SIZE + GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE };
-            Texture2D tex = gameUI.candy_textures[grid[y][x]];
-            Rectangle source = { 0, 0, (float)tex.width, (float)tex.height };
-            Rectangle dest = { visualX[y][x] * CELL_SIZE, visualY[y][x] * CELL_SIZE + GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE };
-            Vector2 origin = { 0, 0 };
-            DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE);
-            DrawRectangleLinesEx(cell, 1, DARKPURPLE);
+            if (visualY[y][x] < y)
+            {
+                visualY[y][x] += fallSpeed;
+                if (visualY[y][x] > y) visualY[y][x] = (float)y;
+            }
+            else if (visualY[y][x] > y)
+            {
+				visualY[y][x] = (float)y; // Candy has reached its final position, it should not go above its grid position
+            }
+        }
+    }
+
+	// Draw candies for normal state
+    for (int y = 0; y < GRID_HEIGHT; y++)
+    {
+        for (int x = 0; x < GRID_WIDTH; x++)
+        {
+			Rectangle cell = { x * CELL_SIZE, y * CELL_SIZE + GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE }; // Cell rectangle for drawing
+			Texture2D tex = gameUI.candy_textures[grid[y][x]]; // Get the texture for the candy type
+			Rectangle source = { 0, 0, (float)tex.width, (float)tex.height }; // Source rectangle for the texture
+			Rectangle dest = { visualX[y][x] * CELL_SIZE, visualY[y][x] * CELL_SIZE + GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE }; // Destination rectangle for the texture
+			Vector2 origin = { 0, 0 }; // Origin for the texture
+			DrawTexturePro(tex, source, dest, origin, 0.0f, WHITE); // Draw the candy texture
+			DrawRectangleLinesEx(cell, 1, DARKPURPLE); // Draw the cell border
         }
     }
 
     // Draw explosion animations
-    for (int i = 0; i < MAX_EXPLOSIONS; i++) {
-        if (explosionAnim[i].active) {
+    for (int i = 0; i < MAX_EXPLOSIONS; i++)
+    {
+        if (explosionAnim[i].active)
+        {
             float alpha = 1.0f - (explosionAnim[i].explosionProgress / EXPLOSION_ANIMATION_DURATION); // Fade out
-            if (alpha < 0) alpha = 0;
-            int x = explosionAnim[i].x;
-            int y = explosionAnim[i].y;
-            Texture2D tex = gameUI.candy_textures[explosionAnim[i].candyType];
-            Rectangle source = { 0, 0, (float)tex.width, (float)tex.height };
-            Rectangle dest = { x * CELL_SIZE, y * CELL_SIZE + GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE };
-            Vector2 origin = { 0, 0 };
-            Color fadeColor = WHITE;
-            fadeColor.a = (unsigned char)(255 * alpha);
-            DrawTexturePro(tex, source, dest, origin, 0.0f, fadeColor);
+			if (alpha < 0) alpha = 0; // Ensure alpha does not go below 0
+
+			int x = explosionAnim[i].x; // Get the x position of the explosion
+			int y = explosionAnim[i].y; // Get the y position of the explosion
+
+			Texture2D tex = gameUI.candy_textures[explosionAnim[i].candyType]; // Get the texture for the candy type
+			Rectangle source = { 0, 0, (float)tex.width, (float)tex.height }; // Source rectangle for the texture
+			Rectangle dest = { x * CELL_SIZE, y * CELL_SIZE + GAME_UI_HEIGHT, CELL_SIZE, CELL_SIZE }; // Destination rectangle for the texture
+			Vector2 origin = { 0, 0 }; // Origin for the texture
+			Color fadeColor = WHITE; // Color for fading (white by default)
+			fadeColor.a = (unsigned char)(255 * alpha); // Set the alpha value for fading color
+			DrawTexturePro(tex, source, dest, origin, 0.0f, fadeColor); // Draw the explosion texture with fading
         }
     }
 }
 
+// Function to handle dragging and swapping candies
 void HandleDragging()
 {
-    Vector2 mousePos = GetMousePosition();
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        if (mousePos.y >= GAME_UI_HEIGHT) {
-            drag.dragStartX = mousePos.x / CELL_SIZE;
-            drag.dragStartY = (mousePos.y - GAME_UI_HEIGHT) / CELL_SIZE;
+	Vector2 mousePos = GetMousePosition(); // Getting the mouse position
+    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON))
+    {
+        if (mousePos.y >= GAME_UI_HEIGHT) // Only allow dragging in the game area
+        {
+			drag.dragStartX = mousePos.x / CELL_SIZE; // Calculate the horizontal grid position
+			drag.dragStartY = (mousePos.y - GAME_UI_HEIGHT) / CELL_SIZE; // Calculate the vertical grid position
         }
     }
-    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
-        if (drag.dragStartX != -1 && drag.dragStartY != -1 && !swapAnim.swapActive) {
-            int dropX = mousePos.x / CELL_SIZE;
-            int dropY = (mousePos.y - GAME_UI_HEIGHT) / CELL_SIZE;
 
-            // Komþuluk kontrolü
+    if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON))
+    {
+		if (drag.dragStartX != -1 && drag.dragStartY != -1 && !swapAnim.swapActive) // Only allow swapping if not already in a swap animation
+        {
+			int dropX = mousePos.x / CELL_SIZE; // Calculate the horizontal grid position for dropping
+			int dropY = (mousePos.y - GAME_UI_HEIGHT) / CELL_SIZE; // Calculate the vertical grid position for dropping
+
+			// Cotrol if the drag start position is adjacent to the drop position
             if ((abs(drag.dragStartX - dropX) == 1 && drag.dragStartY == dropY) ||
                 (abs(drag.dragStartY - dropY) == 1 && drag.dragStartX == dropX)) {
 
-                // Swap animasyonunu baþlat
-                swapAnim.swapActive = 1;
-                swapAnim.swapX1 = drag.dragStartX;
-                swapAnim.swapY1 = drag.dragStartY;
-                swapAnim.swapX2 = dropX;
-                swapAnim.swapY2 = dropY;
-                swapAnim.swapProgress = 0.0f;
-                gameStats.current_moves_left--;
+				// Start the swap animation
+				swapAnim.swapActive = 1; // Set swap active
+				swapAnim.swapX1 = drag.dragStartX; // Set the starting X position for the swap
+				swapAnim.swapY1 = drag.dragStartY; // Set the starting Y position for the swap
+				swapAnim.swapX2 = dropX; // Set the ending X position for the swap
+				swapAnim.swapY2 = dropY; // Set the ending Y position for the swap
+				swapAnim.swapProgress = 0.0f; // Reset the swap progress (animation progress)
+				gameStats.current_moves_left--; // Decrease the moves left
                 PlayAudio(SWAP_SOUND);
-
-                swapStartX1 = visualX[swapAnim.swapY1][swapAnim.swapX1];
-                swapStartY1 = visualY[swapAnim.swapY1][swapAnim.swapX1];
-                swapStartX2 = visualX[swapAnim.swapY2][swapAnim.swapX2];
-                swapStartY2 = visualY[swapAnim.swapY2][swapAnim.swapX2];
             }
-
-            drag.dragStartX = drag.dragStartY = -1;
+			drag.dragStartX = drag.dragStartY = -1; // Reset dragging start values
         }
     }
 }
 
-int GetScoreForMatch(int length) {
+// Function to get the score for a match based on its length
+int GetScoreForMatch(int length)
+{
     if (length >= 5) return 250;
-    if (length == 4) return 150;
-    return 50;
+    if (length == 4) return 175;
+    return 75;
 }
 
-void MarkHorizontalMatches(bool toExplode[GRID_HEIGHT][GRID_WIDTH]) {
-    for (int y = 0; y < GRID_HEIGHT; y++) {
-        for (int x = 0; x < GRID_WIDTH - 2; x++) {
-            int candy = grid[y][x];
-            if (candy == -1) continue;
+// Functions to mark horizontal and vertical matches
+void MarkHorizontalMatches(bool toExplode[GRID_HEIGHT][GRID_WIDTH])
+{
+    for (int y = 0; y < GRID_HEIGHT; y++)
+    {
+        for (int x = 0; x < GRID_WIDTH - 2; x++)
+        {
+			int candy = grid[y][x]; // Get the candy type at the current position
+			if (candy == -1) continue; // Skip if the candy is already exploded
 
-            int matchLen = 1;
-            while (x + matchLen < GRID_WIDTH && grid[y][x + matchLen] == candy) {
-                matchLen++;
+			int matchLen = 1; // Initialize match length to 1
+			while (x + matchLen < GRID_WIDTH && grid[y][x + matchLen] == candy) // Check for matches horizontally
+            {
+				matchLen++; // Increase match length if the next candy is the same type
             }
 
-            if (matchLen >= 3) {
-                for (int i = 0; i < matchLen; i++)
-                    toExplode[y][x + i] = true;
-                gameStats.current_score += GetScoreForMatch(matchLen);
-                x += matchLen - 1;
+			if (matchLen >= 3) // If a match of length 3 or more is found
+            {
+				for (int i = 0; i < matchLen; i++) // Mark all candies in the match for explosion
+					toExplode[y][x + i] = true; // Set the explosion flag for each candy in the match
+				gameStats.current_score += GetScoreForMatch(matchLen); // Update the score based on the match length
+				x += matchLen - 1; // Move the x position to the end of the match
             }
         }
     }
 }
 
-void MarkVerticalMatches(bool toExplode[GRID_HEIGHT][GRID_WIDTH]) {
-    for (int x = 0; x < GRID_WIDTH; x++) {
-        for (int y = 0; y < GRID_HEIGHT - 2; y++) {
-            int candy = grid[y][x];
-            if (candy == -1) continue;
+void MarkVerticalMatches(bool toExplode[GRID_HEIGHT][GRID_WIDTH])
+{
+    for (int x = 0; x < GRID_WIDTH; x++)
+    {
+        for (int y = 0; y < GRID_HEIGHT - 2; y++)
+        {
+			int candy = grid[y][x]; // Get the candy type at the current position
+			if (candy == -1) continue; // Skip if the candy is already exploded
 
-            int matchLen = 1;
-            while (y + matchLen < GRID_HEIGHT && grid[y + matchLen][x] == candy) {
-                matchLen++;
+			int matchLen = 1; // Initialize match length to 1
+			while (y + matchLen < GRID_HEIGHT && grid[y + matchLen][x] == candy) // Check for matches vertically
+            {
+				matchLen++; // Increase match length if the next candy is the same type
             }
 
-            if (matchLen >= 3) {
-                for (int i = 0; i < matchLen; i++)
-                    toExplode[y + i][x] = true;
-                gameStats.current_score += GetScoreForMatch(matchLen);
-                y += matchLen - 1;
+			if (matchLen >= 3) // If a match of length 3 or more is found
+            {
+				for (int i = 0; i < matchLen; i++) // Mark all candies in the match for explosion
+					toExplode[y + i][x] = true; // Set the explosion flag for each candy in the match
+				gameStats.current_score += GetScoreForMatch(matchLen); // Update the score based on the match length
+				y += matchLen - 1; // Move the y position to the end of the match
             }
         }
     }
 }
 
-void ProcessMatches() {
-    bool matchFound;
+// Function to process matches and trigger explosions
+void ProcessMatches()
+{
+	bool matchFound; // Flag to check if any matches were found
     do {
-        bool toExplode[GRID_HEIGHT][GRID_WIDTH] = { false };
-        matchFound = false;
+		bool toExplode[GRID_HEIGHT][GRID_WIDTH] = { false }; // Array to mark candies to explode
 
+		matchFound = false; // Reset match found flag for each iteration
+
+		// Check for horizontal and vertical matches
         MarkHorizontalMatches(toExplode);
         MarkVerticalMatches(toExplode);
 
-        for (int y = 0; y < GRID_HEIGHT; y++) {
-            for (int x = 0; x < GRID_WIDTH; x++) {
-                if (toExplode[y][x]) {
-                    TriggerExplosion(x, y, grid[y][x]);
-                    grid[y][x] = -1;
-                    matchFound = true;
+		// Process the matches and trigger explosions
+        for (int y = 0; y < GRID_HEIGHT; y++)
+        {
+            for (int x = 0; x < GRID_WIDTH; x++)
+            {
+				if (toExplode[y][x]) // If a match is marked for explosion
+                {
+					TriggerExplosion(x, y, grid[y][x]); // Trigger explosion animation
+					grid[y][x] = -1; // Set the candy to -1 to mark it as exploded
+					matchFound = true; // Set match found flag to true
                 }
             }
         }
 
-        if (matchFound) {
+		if (matchFound) // If any matches were found
+        {
             PlayAudio(EXPLOSION_SOUND);
-            ProcessCandyFalls();
+			ProcessCandyFalls(); // Process the candy falls after matches
         }
 
     } while (matchFound);
 }
 
-void ProcessCandyFalls() {
-    for (int x = 0; x < GRID_WIDTH; x++) {
-        for (int y = GRID_HEIGHT - 1; y >= 0; y--) {
-            if (grid[y][x] == -1) {
-                for (int k = y - 1; k >= 0; k--) {
-                    if (grid[k][x] != -1) {
-                        grid[y][x] = grid[k][x];
-                        grid[k][x] = -1;
-                        visualY[y][x] = visualY[k][x]; // Görsel konumu da taþý
-                        visualX[y][x] = (float)x;
+// Function to process candy falls after matches
+void ProcessCandyFalls()
+{
+    for (int x = 0; x < GRID_WIDTH; x++)
+    {
+        for (int y = GRID_HEIGHT - 1; y >= 0; y--)
+        {
+			if (grid[y][x] == -1) // If the current cell is empty (exploded candy)
+            {
+				for (int k = y - 1; k >= 0; k--) // Check above cells for candies
+                {
+					if (grid[k][x] != -1) // If a candy is found above
+                    {
+						grid[y][x] = grid[k][x]; // Move the candy down to the empty cell
+						grid[k][x] = -1; // Mark the original cell as empty
+						visualY[y][x] = visualY[k][x]; // Update visual position for the moved candy
+						visualX[y][x] = (float)x; // Keep the x position the same
                         break;
                     }
                 }
@@ -619,106 +670,114 @@ void ProcessCandyFalls() {
     }
 }
 
-void CheckGameStatus()
+// Function to update the swap animation
+void UpdateSwap()
 {
-    // Sonuç kontrolü
-    if (gameStats.current_score >= gameStats.target_score)
+    if (swapAnim.swapActive)
     {
-        winState = WIN;
-        PlayAudio(WIN_SOUND);
+		float dt = GetFrameTime(); // Get the delta time for the frame
+		swapAnim.swapProgress += dt / SWAP_ANIMATION_DURATION; // Update the swap progress based on the delta time
 
-        for (int i = 1; i <= 5; i++)
+		if (swapAnim.swapProgress >= 1.0f) // If the swap animation is complete
         {
-            if (gameStats.current_level == i && gameStats.target_score == 750 + 250 * i)
-            {
-                gameStats.current_level++;
-                SaveGameProgress(gameStats.current_level); // Seviye güncelleme
-            }
+			// Swap the candies in the grid
+			int temp = grid[swapAnim.swapY1][swapAnim.swapX1]; // Temporary variable to hold the candy type
+			grid[swapAnim.swapY1][swapAnim.swapX1] = grid[swapAnim.swapY2][swapAnim.swapX2]; // Swap the candies in the grid
+			grid[swapAnim.swapY2][swapAnim.swapX2] = temp; // Set the candy type in the second position to the temporary variable
+
+			// Swap the visual positions of the candies
+			float tempX = visualX[swapAnim.swapY1][swapAnim.swapX1]; // Temporary variable to hold the visual x position
+			float tempY = visualY[swapAnim.swapY1][swapAnim.swapX1]; // Temporary variable to hold the visual y position
+			visualX[swapAnim.swapY1][swapAnim.swapX1] = visualX[swapAnim.swapY2][swapAnim.swapX2]; // Swap the visual x positions
+			visualY[swapAnim.swapY1][swapAnim.swapX1] = visualY[swapAnim.swapY2][swapAnim.swapX2]; // Swap the visual y positions
+			visualX[swapAnim.swapY2][swapAnim.swapX2] = tempX; // Set the visual x position in the second position to the temporary variable
+			visualY[swapAnim.swapY2][swapAnim.swapX2] = tempY; // Set the visual y position in the second position to the temporary variable
+
+			swapAnim.swapActive = 0; // Reset the swap active flag
+			swapAnim.swapProgress = 0.0f; // Reset the swap progress
         }
-
-    }
-    else if (gameStats.current_moves_left <= 0)
-    {
-        winState = LOSE;
-        PlayAudio(LOSE_SOUND);
-    }
-    // Skora göre oyunu bitirme kontrolü
-
-    if (gameStats.current_moves_left <= 0 || gameStats.current_score >= gameStats.target_score)
-    {
-        gameState = AFTER_PLAY;
-        if (winState == WIN && gameStats.current_level > 5) gameState = GAME_COMPLETED;
+        else
+        {
+			// Update the visual positions of the candies during the swap animation
+			float t = swapAnim.swapProgress; // Get the progress of the swap animation (0 to 1)
+			visualX[swapAnim.swapY1][swapAnim.swapX1] = (1 - t) * swapAnim.swapX1 + t * swapAnim.swapX2; // Interpolate the x position for the first candy
+			visualY[swapAnim.swapY1][swapAnim.swapX1] = (1 - t) * swapAnim.swapY1 + t * swapAnim.swapY2; // Interpolate the y position for the first candy
+			visualX[swapAnim.swapY2][swapAnim.swapX2] = (1 - t) * swapAnim.swapX2 + t * swapAnim.swapX1; // Interpolate the x position for the second candy
+			visualY[swapAnim.swapY2][swapAnim.swapX2] = (1 - t) * swapAnim.swapY2 + t * swapAnim.swapY1; // Interpolate the y position for the second candy
+        }
     }
 }
 
+// Function to trigger an explosion animation
 void TriggerExplosion(int x, int y, int candyType)
 {
-    for (int i = 0; i < MAX_EXPLOSIONS; i++)
+	for (int i = 0; i < MAX_EXPLOSIONS; i++) // Check for an available explosion animation slot
     {
-        if (!explosionAnim[i].active)
+		if (!explosionAnim[i].active) // If the explosion animation slot is not active
         {
-            explosionAnim[i].x = x;
-            explosionAnim[i].y = y;
-            explosionAnim[i].candyType = candyType;
-            explosionAnim[i].explosionProgress = 0.0f;
-            explosionAnim[i].active = 1;
+			explosionAnim[i].x = x; // Set the x position of the explosion
+			explosionAnim[i].y = y; // Set the y position of the explosion
+			explosionAnim[i].candyType = candyType; // Set the candy type for the explosion
+			explosionAnim[i].explosionProgress = 0.0f; // Reset the explosion progress for the animation
+			explosionAnim[i].active = 1; // Set the explosion animation as active
             break;
         }
     }
 }
 
+// Function to update explosion animations
 void UpdateExplosion(float delta)
 {
     for (int i = 0; i < MAX_EXPLOSIONS; i++)
     {
-        if (explosionAnim[i].active)
+		if (explosionAnim[i].active) // If the explosion animation is active
         {
-            explosionAnim[i].explosionProgress += delta;
-            if (explosionAnim[i].explosionProgress >= EXPLOSION_ANIMATION_DURATION)
+			explosionAnim[i].explosionProgress += delta; // Update the explosion progress based on the delta time
+            if (explosionAnim[i].explosionProgress >= EXPLOSION_ANIMATION_DURATION) // If the explosion animation is complete
             {
-                explosionAnim[i].active = 0;
+				explosionAnim[i].active = 0; // Set the explosion animation as inactive
             }
         }
     }
 }
 
-void UpdateSwap()
+// Function to check the game status and update the game state
+void CheckGameStatus()
 {
-    // Swap animasyonu güncelle
-    if (swapAnim.swapActive) {
-        float delta = GetFrameTime();
-        swapAnim.swapProgress += delta / SWAP_ANIMATION_DURATION;
-        if (swapAnim.swapProgress >= 1.0f) {
-            // Swap iþlemini grid'de uygula
-            int temp = grid[swapAnim.swapY1][swapAnim.swapX1];
-            grid[swapAnim.swapY1][swapAnim.swapX1] = grid[swapAnim.swapY2][swapAnim.swapX2];
-            grid[swapAnim.swapY2][swapAnim.swapX2] = temp;
+	if (gameStats.current_score >= gameStats.target_score) // If the current score is greater than or equal to the target score
+    {
+        winState = WIN;
+        PlayAudio(WIN_SOUND);
 
-            // Görsel konumlarý da güncelle
-            float tempX = visualX[swapAnim.swapY1][swapAnim.swapX1];
-            float tempY = visualY[swapAnim.swapY1][swapAnim.swapX1];
-            visualX[swapAnim.swapY1][swapAnim.swapX1] = visualX[swapAnim.swapY2][swapAnim.swapX2];
-            visualY[swapAnim.swapY1][swapAnim.swapX1] = visualY[swapAnim.swapY2][swapAnim.swapX2];
-            visualX[swapAnim.swapY2][swapAnim.swapX2] = tempX;
-            visualY[swapAnim.swapY2][swapAnim.swapX2] = tempY;
+        // Check for level completion
+		for (int i = 1; i <= 5; i++) 
+        {
+            if (gameStats.current_level == i && gameStats.target_score == 750 + 250 * i) // Check if the current level matches the target score for that level
+            {
+				gameStats.current_level++; // Increment the current level
+				SaveGameProgress(gameStats.current_level); // Save the game progress
+            }
+        }
+    }
+	else if (gameStats.current_moves_left <= 0) // If there are no moves left
+    {
+        winState = LOSE;
+        PlayAudio(LOSE_SOUND);
+    }
 
-            swapAnim.swapActive = 0;
-            swapAnim.swapProgress = 0.0f;
-        }
-        else {
-            // Görsel konumlarý ara pozisyona taþý
-            float t = swapAnim.swapProgress;
-            visualX[swapAnim.swapY1][swapAnim.swapX1] = (1 - t) * swapAnim.swapX1 + t * swapAnim.swapX2;
-            visualY[swapAnim.swapY1][swapAnim.swapX1] = (1 - t) * swapAnim.swapY1 + t * swapAnim.swapY2;
-            visualX[swapAnim.swapY2][swapAnim.swapX2] = (1 - t) * swapAnim.swapX2 + t * swapAnim.swapX1;
-            visualY[swapAnim.swapY2][swapAnim.swapX2] = (1 - t) * swapAnim.swapY2 + t * swapAnim.swapY1;
-        }
+	// Check if the game is completed
+	if (gameStats.current_moves_left <= 0 || gameStats.current_score >= gameStats.target_score) // If the game is over
+    {
+        gameState = AFTER_PLAY;
+		if (winState == WIN && gameStats.current_level > 5) // If the player has completed all levels
+            gameState = GAME_COMPLETED;
     }
 }
 
+// Function for button click handling
 void IsButtonClicked(Rectangle button, ButtonState buttonState, GameState setGameState, ControlType controlType, int setLevel)
 {
-    Vector2 mousePos = GetMousePosition();
+	Vector2 mousePos = GetMousePosition(); // Getting the mouse position
     if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
     {
         if (CheckCollisionPointRec(mousePos, button))
@@ -758,8 +817,11 @@ void IsButtonClicked(Rectangle button, ButtonState buttonState, GameState setGam
             case SET_LEVEL:
                 if (setLevel < gameStats.current_level)
                 {
-                    // Setting the target score for the selected level
-                    gameStats.target_score = TARGET_SCORE[setLevel];
+                    if (setLevel != -1) // If it is -1, it means that button should not change target score
+                    {
+                        gameStats.target_score = TARGET_SCORE[setLevel]; // Setting the target score for the selected level
+                    }
+
 
                     // Resetting stats for the selected level
                     gameStats.current_score = 0;
@@ -776,6 +838,7 @@ void IsButtonClicked(Rectangle button, ButtonState buttonState, GameState setGam
     }
 }
 
+// Functions for game progress saving and loading
 void LoadGameProgress()
 {
     FILE* file = fopen("assets/level_data.txt", "r");
@@ -799,4 +862,13 @@ void SaveGameProgress(int level)
     }
     fprintf(file, "%d", level);
     fclose(file);
+}
+
+// Function to deinitialize the game and free resources
+void DeinitGame()
+{
+    UnloadTextures(); // Unloading textures
+    UnloadAudio(); // Unloading audio files
+    CloseAudioDevice();
+    CloseWindow();
 }
