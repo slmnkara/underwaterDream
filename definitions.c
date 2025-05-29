@@ -31,7 +31,6 @@ const int MAX_MOVES = 20; // Maximum moves allowed
 void InitGame()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Underwater Dream");
-    SetWindowIcon(window_icon); // Setting the window icon
     InitAudioDevice();
 
     gameState = BEFORE_PLAY; // Initial game state
@@ -126,7 +125,6 @@ void InitSwapAnim()
 // Functions for loading and unloading textures
 void LoadTextures()
 {
-    window_icon = LoadImage("assets/textures/window_icon.png");
     mainMenuUI.wallpaper = LoadTexture("assets/textures/main_menu_wallpaper.png");
     gameUI.candy_textures[0] = LoadTexture("assets/textures/texture1.png");
     gameUI.candy_textures[1] = LoadTexture("assets/textures/texture2.png");
@@ -138,7 +136,6 @@ void LoadTextures()
 
 void UnloadTextures()
 {
-    UnloadImage(window_icon);
     UnloadTexture(mainMenuUI.wallpaper);
     for (int i = 0; i < CANDY_TYPES; i++)
     {
