@@ -2,7 +2,8 @@
 #define DEFINITIONS_H
 
 #include "raylib.h"
-#include "stdio.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 // Initializing grid
 #define GRID_WIDTH 8
@@ -22,10 +23,10 @@
 #define SWAP_ANIMATION_DURATION 0.5f
 #define MAX_EXPLOSIONS 64
 
-int grid[GRID_HEIGHT][GRID_WIDTH]; // Grid for candies
+extern int grid[GRID_HEIGHT][GRID_WIDTH]; // Grid for candies
 
-float visualY[GRID_HEIGHT][GRID_WIDTH]; // Visual Y positions for candies
-float visualX[GRID_HEIGHT][GRID_WIDTH]; // Visual X positions for candies
+extern float visualY[GRID_HEIGHT][GRID_WIDTH]; // Visual Y positions for candies
+extern float visualX[GRID_HEIGHT][GRID_WIDTH]; // Visual X positions for candies
 
 extern const int TARGET_SCORE[5]; // Target scores for each level
 extern const int MAX_MOVES; // Maximum moves allowed

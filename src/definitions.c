@@ -1,5 +1,10 @@
 #include "definitions.h"
 
+int grid[GRID_HEIGHT][GRID_WIDTH];
+float visualY[GRID_HEIGHT][GRID_WIDTH];
+float visualX[GRID_HEIGHT][GRID_WIDTH];
+
+
 // State structs
 GameState gameState;
 WinState winState;
@@ -847,7 +852,7 @@ void LoadGameProgress()
         gameStats.current_level = 1;
         return;
     }
-    fscanf_s(file, "%d", &gameStats.current_level);
+    fscanf(file, "%d", &gameStats.current_level);
     fclose(file);
 }
 
