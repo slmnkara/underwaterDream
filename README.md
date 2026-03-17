@@ -2,6 +2,10 @@
 
 Underwater Dream is a basic match-three puzzle game developed in **C** using the **Raylib** library.
 
+<p align="center">
+  <img src="assets/screenshot.png" alt="Underwater Dream Main Menu" width="600"/>
+</p>
+
 ## Features
 - Basic match-3 mechanics (vertical and horizontal matching).
 - Multiple levels with specific target scores and move limits.
